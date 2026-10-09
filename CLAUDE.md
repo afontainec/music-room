@@ -4,7 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Greenfield: the repo (github.com/afontainec/music-room) has no code yet. Everything below comes from the product brief and stack decisions made with the user, not from existing code. Once the project is scaffolded, add the real build, lint, test and run commands here and correct anything that was built differently.
+Walking skeleton only: `GET /api/hello` on the server and a page that renders its response. No rooms, database or auth yet. The Product, Stack and Design sections below come from the product brief and stack decisions made with the user; correct them when something is built differently.
+
+## Commands
+
+Node 22 (`.nvmrc`). Run from the repo root:
+
+- `npm ci` — install all workspaces
+- `npm run dev:server` / `npm run dev:web` — Fastify on port 3000, Vite dev server proxying `/api` to it
+- `npm run build` — build `web/` then `server/`
+- `npm start` — run the built server, which also serves `web/dist` (one service in production)
+- `npm test` — Vitest (server); a single file: `npm test -w server -- src/routes/hello.test.ts`
+- `npm run test:e2e` — Playwright; builds and boots the server on port 3100 itself (first time: `npx playwright install chromium`)
+
+CI (`.github/workflows/ci.yml`) runs build, Vitest and Playwright on every push and PR. Railway reads `railway.json`.
 
 ## Product
 
