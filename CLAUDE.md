@@ -19,6 +19,17 @@ Node 22 (`.nvmrc`). Run from the repo root:
 
 CI (`.github/workflows/ci.yml`) runs build, Vitest and Playwright on every push and PR. Railway reads `railway.json`.
 
+## E2E recordings
+
+Playwright records a video and a trace of every test (`playwright.config.ts`). CI uploads the HTML report as the `playwright-report` artifact and posts a summary with the link on the pull request; view a report with `npx playwright show-report <folder>`.
+
+This recording is how a change is shown to work, so every pull request that changes behaviour must:
+
+- Add or update a Playwright test in `e2e/` for each acceptance criterion of the issue, named after the criterion so the summary reads as a checklist.
+- Drive the real UI through `page` wherever the criterion is user-visible; API-only tests produce no video.
+- Assert playback through state (the audio element is playing, which track, what position). The video has no sound.
+- Run `npm run test:e2e` and get it passing before opening the pull request.
+
 ## Product
 
 Music Rooms is a web app with named "rooms", each holding its own list of mp3 files. A visitor picks a room and hears continuous, ambient random playback of that room's tracks. Listeners in the same room should hear the same track at roughly the same position.
