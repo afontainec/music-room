@@ -10,6 +10,20 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: music_room
+          POSTGRES_PASSWORD: music_room
+          POSTGRES_DB: music_room
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U music_room"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,6 +33,13 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      - name: Migrate up, down and up again on Postgres
+        env:
+          DATABASE_URL: postgres://music_room:music_room@localhost:5432/music_room
+        run: |
+          npm run db:migrate
+          npm run db:rollback
+          npm run db:migrate
       - run: npx playwright install --with-deps chromium
       - id: e2e
         run: npm run test:e2e

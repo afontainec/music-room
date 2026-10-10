@@ -14,7 +14,9 @@
     "dev:server": "npm run dev -w server",
     "dev:web": "npm run dev -w web",
     "test": "npm run test -w server",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "db:migrate": "npm run db:migrate -w server",
+    "db:rollback": "npm run db:rollback -w server --"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",
