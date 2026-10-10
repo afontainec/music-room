@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Walking skeleton only: `GET /api/hello` on the server and a page that renders its response. No rooms, database or auth yet. The Product, Stack and Design sections below come from the product brief and stack decisions made with the user; correct them when something is built differently.
+Walking skeleton (`GET /api/hello` and a page that renders its response) plus the database layer: the `rooms` and `room_files` tables, their Drizzle schema and a migration runner. Nothing reads or writes the database yet, and the server does not connect to it at startup. No room API, playback or auth. The Product, Stack and Design sections below come from the product brief and stack decisions made with the user; correct them when something is built differently.
 
 ## Commands
 
@@ -16,8 +16,16 @@ Node 22 (`.nvmrc`). Run from the repo root:
 - `npm start` — run the built server, which also serves `web/dist` (one service in production)
 - `npm test` — Vitest (server); a single file: `npm test -w server -- src/routes/hello.test.ts`
 - `npm run test:e2e` — Playwright; builds and boots the server on port 3100 itself (first time: `npx playwright install chromium`)
+- `docker compose up -d` — local Postgres; copy `.env.example` to `.env` for its `DATABASE_URL`
+- `npm run db:migrate` / `npm run db:rollback` — apply all pending migrations / roll back the latest (`-- 2` for two)
 
-CI (`.github/workflows/ci.yml`) runs build, Vitest and Playwright on every push and PR. Railway reads `railway.json`.
+CI (`.github/workflows/ci.yml`) runs build, Vitest, the migrations (up, down, up) against a Postgres service, and Playwright on every push and PR. Railway reads `railway.json`.
+
+## Database
+
+- `server/src/db/schema.ts` is the Drizzle schema; `server/src/db/client.ts` exports `createDb` and the driver-agnostic `Db` type.
+- Migrations are hand-written up/down pairs in `server/src/db/migrations` (drizzle-kit generates no down migrations), listed in order in `migrations/index.ts` and tracked in the `schema_migrations` table. One SQL statement per array entry. A schema change needs both a new migration and a matching edit to `schema.ts`.
+- Database tests (`server/src/db/db.test.ts`) run on PGlite, in-memory Postgres, so `npm test` needs no database. Type new database code against `Db` so it can be tested the same way.
 
 ## E2E recordings
 
