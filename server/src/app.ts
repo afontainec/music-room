@@ -5,6 +5,7 @@ import fastifyStatic from '@fastify/static';
 import type { Db } from './db/client.js';
 import { fileRoutes } from './routes/files.js';
 import { helloRoutes } from './routes/hello.js';
+import { roomRoutes } from './routes/rooms.js';
 import type { Storage } from './storage/storage.js';
 
 const webDist = fileURLToPath(new URL('../../web/dist', import.meta.url));
@@ -20,7 +21,10 @@ export async function buildApp(deps?: AppDeps) {
   const app = Fastify({ logger: true });
 
   await app.register(helloRoutes);
-  if (deps) await app.register(fileRoutes, deps);
+  if (deps) {
+    await app.register(roomRoutes, { db: deps.db });
+    await app.register(fileRoutes, deps);
+  }
 
   // Single Railway service: serve the built SPA from the same Node process.
   if (existsSync(webDist)) {
