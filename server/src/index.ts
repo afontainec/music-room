@@ -1,6 +1,17 @@
 import { buildApp } from './app.js';
+import { maxUploadBytes, storageDir } from './config.js';
+import { createDb } from './db/client.js';
+import { LocalDiskStorage } from './storage/local.js';
 
-const app = await buildApp();
+// The database is optional so the app still boots (hello page only) without one.
+const database = process.env.DATABASE_URL ? createDb(process.env.DATABASE_URL) : undefined;
+const app = await buildApp(
+  database && {
+    db: database.db,
+    storage: new LocalDiskStorage(storageDir()),
+    maxUploadBytes: maxUploadBytes(),
+  },
+);
 const port = Number(process.env.PORT ?? 3000);
 
 try {

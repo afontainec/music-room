@@ -1,6 +1,9 @@
 import { defineConfig } from '@playwright/test';
 
 const port = 3100;
+// Same default as .env.example (docker compose up -d locally, a service container in CI).
+const databaseUrl =
+  process.env.DATABASE_URL ?? 'postgres://music_room:music_room@localhost:5432/music_room';
 
 export default defineConfig({
   testDir: 'e2e',
@@ -13,9 +16,9 @@ export default defineConfig({
   // Every test is recorded: the HTML report embeds a video and a trace per test.
   use: { baseURL: `http://localhost:${port}`, video: 'on', trace: 'on' },
   webServer: {
-    command: 'npm run build && npm run start',
+    command: 'npm run build && npm run db:migrate && npm run start',
     url: `http://localhost:${port}/api/hello`,
-    env: { PORT: String(port) },
+    env: { PORT: String(port), DATABASE_URL: databaseUrl, STORAGE_DIR: 'test-results/uploads' },
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
