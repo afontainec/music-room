@@ -19,7 +19,7 @@ Node 22 (`.nvmrc`). Run from the repo root:
 - `docker compose up -d` — local Postgres; copy `.env.example` to `.env` for its `DATABASE_URL`
 - `npm run db:migrate` / `npm run db:rollback` — apply all pending migrations / roll back the latest (`-- 2` for two)
 
-CI (`.github/workflows/ci.yml`) runs build, Vitest, the migrations (up, down, up) against a Postgres service, and Playwright on every push and PR. Railway reads `railway.json`.
+CI (`.github/workflows/ci.yml`) runs build, Vitest, the migrations (up, down, up) against a Postgres service, and Playwright on every push and PR. Railway reads `railway.json`: its pre-deploy command applies pending migrations with the compiled CLI (`tsx` is a dev dependency) before the new version starts. The Railway service needs `DATABASE_URL` and `STORAGE_DIR` (a path on the volume mount) set.
 
 ## Database
 
