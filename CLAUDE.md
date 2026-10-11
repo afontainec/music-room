@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Walking skeleton (`GET /api/hello` and a page that renders its response) plus the database layer: the `rooms` and `room_files` tables, their Drizzle schema and a migration runner. Nothing reads or writes the database yet, and the server does not connect to it at startup. No room API, playback or auth. The Product, Stack and Design sections below come from the product brief and stack decisions made with the user; correct them when something is built differently.
+Walking skeleton (`GET /api/hello` and a page that renders its response) plus the database layer: the `rooms` and `room_files` tables, their Drizzle schema and a migration runner. The mp3 file layer (storage interface, upload/URL endpoints, serving) reads and writes `room_files`; the server connects to the database at startup when `DATABASE_URL` is set. No room API, playback or auth. The Product, Stack and Design sections below come from the product brief and stack decisions made with the user; correct them when something is built differently.
 
 ## Commands
 
@@ -26,6 +26,13 @@ CI (`.github/workflows/ci.yml`) runs build, Vitest, the migrations (up, down, up
 - `server/src/db/schema.ts` is the Drizzle schema; `server/src/db/client.ts` exports `createDb` and the driver-agnostic `Db` type.
 - Migrations are hand-written up/down pairs in `server/src/db/migrations` (drizzle-kit generates no down migrations), listed in order in `migrations/index.ts` and tracked in the `schema_migrations` table. One SQL statement per array entry. A schema change needs both a new migration and a matching edit to `schema.ts`.
 - Database tests (`server/src/db/db.test.ts`) run on PGlite, in-memory Postgres, so `npm test` needs no database. Type new database code against `Db` so it can be tested the same way.
+
+## Files
+
+- `server/src/storage/storage.ts` is the `Storage` interface (put/open/delete by key); `local.ts` is the disk implementation rooted at `STORAGE_DIR`. Swap it for S3 in `index.ts` only.
+- `server/src/files.ts` validates uploads (`.mp3` extension, `audio/mpeg`, ID3/frame-sync magic bytes, size up to `MAX_UPLOAD_BYTES`, default 20 MB) and external URLs (http/https ending in `.mp3`). External URLs are referenced, not re-hosted or fetched.
+- `server/src/routes/files.ts`: `POST /api/rooms/:roomId/files` (multipart `file`), `POST /api/rooms/:roomId/files/url` (`{ url }`), `GET /api/rooms/:roomId/files`, `GET /api/files/:id` (streams uploads with Range support, redirects URLs). These are registered only when `DATABASE_URL` is set, and are not behind auth yet.
+- The Playwright web server runs `db:migrate` and needs Postgres (`docker compose up -d` locally).
 
 ## E2E recordings
 
