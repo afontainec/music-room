@@ -24,6 +24,23 @@ jobs:
       issues: read
       id-token: write
       actions: read # Required for Claude to read CI results on PRs
+    # Same Postgres as ci.yml: the Playwright web server migrates and uses it
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: music_room
+          POSTGRES_PASSWORD: music_room
+          POSTGRES_DB: music_room
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U music_room"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      DATABASE_URL: postgres://music_room:music_room@localhost:5432/music_room
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -36,6 +53,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - run: npx playwright install --with-deps chromium
 
       - name: Run Claude Code
         id: claude
