@@ -1,15 +1,12 @@
-import { useEffect, useState } from 'react';
+import { RoomPage } from './pages/RoomPage';
+import { RoomSelection } from './pages/RoomSelection';
+import { usePathname } from './router';
 
 export function App() {
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState(false);
+  const pathname = usePathname();
 
-  useEffect(() => {
-    fetch('/api/hello')
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
-      .then((data: { message: string }) => setMessage(data.message))
-      .catch(() => setError(true));
-  }, []);
+  const room = /^\/rooms\/([^/]+)\/?$/.exec(pathname);
+  if (room) return <RoomPage key={room[1]} id={decodeURIComponent(room[1])} />;
 
-  return <h1>{error ? 'Failed to load greeting' : (message ?? 'Loading…')}</h1>;
+  return <RoomSelection />;
 }
