@@ -1,0 +1,224 @@
+openapi: 3.0.3
+info:
+  title: Music Rooms API
+  version: 0.1.0
+  description: Room admin API. Not behind authentication yet.
+paths:
+  /api/rooms:
+    get:
+      summary: List all rooms
+      responses:
+        '200':
+          description: Rooms ordered by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Room'
+    post:
+      summary: Create a room
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  maxLength: 100
+                  description: Unique, trimmed
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+        '400':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+  /api/rooms/{id}:
+    get:
+      summary: Room details with its file list
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The room and its files
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Room'
+                  - type: object
+                    properties:
+                      files:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/RoomFile'
+        '404':
+          $ref: '#/components/responses/Error'
+  /api/rooms/{roomId}/files:
+    parameters:
+      - name: roomId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: List a room's files
+      responses:
+        '200':
+          description: Files
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RoomFile'
+        '404':
+          $ref: '#/components/responses/Error'
+    post:
+      summary: Assign an uploaded mp3 to the room
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomFile'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /api/rooms/{roomId}/files/url:
+    post:
+      summary: Assign an external mp3 URL to the room
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: http(s) URL ending in .mp3
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomFile'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /api/files/{id}:
+    get:
+      summary: Play a file (streams uploads with Range support, redirects URLs)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: audio/mpeg
+        '206':
+          description: Partial content
+        '302':
+          description: Redirect to the external URL
+        '404':
+          $ref: '#/components/responses/Error'
+components:
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+  schemas:
+    Room:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    RoomFile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        roomId:
+          type: string
+          format: uuid
+        source:
+          type: string
+          enum: [upload, url]
+        fileRef:
+          type: string
+        originalName:
+          type: string
+          nullable: true
+        mimeType:
+          type: string
+          nullable: true
+        sizeBytes:
+          type: integer
+          nullable: true
+        durationSeconds:
+          type: number
+          nullable: true
+        position:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time

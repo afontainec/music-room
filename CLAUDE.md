@@ -32,6 +32,7 @@ CI (`.github/workflows/ci.yml`) runs build, Vitest, the migrations (up, down, up
 - `server/src/storage/storage.ts` is the `Storage` interface (put/open/delete by key); `local.ts` is the disk implementation rooted at `STORAGE_DIR`. Swap it for S3 in `index.ts` only.
 - `server/src/files.ts` validates uploads (`.mp3` extension, `audio/mpeg`, ID3/frame-sync magic bytes, size up to `MAX_UPLOAD_BYTES`, default 20 MB) and external URLs (http/https ending in `.mp3`). External URLs are referenced, not re-hosted or fetched.
 - `server/src/routes/files.ts`: `POST /api/rooms/:roomId/files` (multipart `file`), `POST /api/rooms/:roomId/files/url` (`{ url }`), `GET /api/rooms/:roomId/files`, `GET /api/files/:id` (streams uploads with Range support, redirects URLs). These are registered only when `DATABASE_URL` is set, and are not behind auth yet.
+- `server/src/routes/rooms.ts`: `POST /api/rooms` (`{ name }`, 409 on a duplicate name), `GET /api/rooms`, `GET /api/rooms/:id` (room plus its `files`). Files are assigned to a room with the file routes above. Same registration condition, no auth yet. `docs/openapi.yaml` documents all of these; keep it in sync.
 - The Playwright web server runs `db:migrate` and needs Postgres (`docker compose up -d` locally).
 
 ## E2E recordings
