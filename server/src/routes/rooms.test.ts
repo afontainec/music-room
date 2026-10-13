@@ -64,6 +64,42 @@ describe('room routes', () => {
     expect(res.json().files[0]).toMatchObject({ source: 'url', fileRef: 'https://example.com/one.mp3' });
   });
 
+  describe('next track', () => {
+    const addUrl = async (roomId: string, url: string) =>
+      (await app.inject({ method: 'POST', url: `/api/rooms/${roomId}/files/url`, payload: { url } })).json();
+    const next = (roomId: string, after?: string) =>
+      app.inject({ method: 'GET', url: `/api/rooms/${roomId}/next-track${after ? `?after=${after}` : ''}` });
+
+    it('returns null for a room without tracks', async () => {
+      const room = (await create('Empty')).json();
+      expect((await next(room.id)).json()).toEqual({ track: null });
+    });
+
+    it("picks one of the room's tracks and never the one given as `after`", async () => {
+      const room = (await create('Chill')).json();
+      const one = await addUrl(room.id, 'https://example.com/one.mp3');
+      const two = await addUrl(room.id, 'https://example.com/two.mp3');
+      const res = await next(room.id);
+      expect(res.statusCode).toBe(200);
+      expect([one.id, two.id]).toContain(res.json().track.id);
+      for (let i = 0; i < 10; i++) {
+        expect((await next(room.id, one.id)).json().track.id).toBe(two.id);
+        expect((await next(room.id, two.id)).json().track.id).toBe(one.id);
+      }
+    });
+
+    it('repeats the only track of a one-track room', async () => {
+      const room = (await create('Solo')).json();
+      const only = await addUrl(room.id, 'https://example.com/one.mp3');
+      expect((await next(room.id, only.id)).json().track.id).toBe(only.id);
+    });
+
+    it('returns 404 for unknown or malformed room ids', async () => {
+      expect((await next('nope')).statusCode).toBe(404);
+      expect((await next('00000000-0000-4000-8000-000000000000')).statusCode).toBe(404);
+    });
+  });
+
   it('returns 404 for unknown or malformed ids', async () => {
     expect((await app.inject({ method: 'GET', url: '/api/rooms/nope' })).statusCode).toBe(404);
     const missing = '00000000-0000-4000-8000-000000000000';

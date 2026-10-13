@@ -67,6 +67,41 @@ paths:
                           $ref: '#/components/schemas/RoomFile'
         '404':
           $ref: '#/components/responses/Error'
+  /api/rooms/{id}/next-track:
+    get:
+      summary: A random track of the room to play next
+      description: >-
+        Never returns the track given as `after` (the one that just played), unless it is the
+        room's only track. Play the returned track from `GET /api/files/{id}`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: after
+          in: query
+          required: false
+          description: Id of the track that just played
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The picked track, or null when the room has no tracks
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [track]
+                properties:
+                  track:
+                    nullable: true
+                    allOf:
+                      - $ref: '#/components/schemas/RoomFile'
+        '404':
+          $ref: '#/components/responses/Error'
   /api/rooms/{roomId}/files:
     parameters:
       - name: roomId

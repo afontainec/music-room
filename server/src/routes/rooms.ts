@@ -2,6 +2,7 @@ import { asc, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { Db } from '../db/client.js';
 import { roomFiles, rooms } from '../db/schema.js';
+import { pickNextTrack } from '../playback.js';
 
 export interface RoomRoutesOptions {
   db: Db;
@@ -39,4 +40,17 @@ export async function roomRoutes(app: FastifyInstance, opts: RoomRoutesOptions) 
       .orderBy(asc(roomFiles.createdAt));
     return { ...room, files };
   });
+
+  // Random pick on the server, so it can become the room's shared playback state once listeners sync.
+  // `after` is the track that just played; it is skipped unless it is the room's only track.
+  app.get<{ Params: { id: string }; Querystring: { after?: string } }>(
+    '/api/rooms/:id/next-track',
+    async (req, reply) => {
+      if (!UUID.test(req.params.id)) return reply.code(404).send({ error: 'Room not found' });
+      const [room] = await db.select({ id: rooms.id }).from(rooms).where(eq(rooms.id, req.params.id));
+      if (!room) return reply.code(404).send({ error: 'Room not found' });
+      const files = await db.select().from(roomFiles).where(eq(roomFiles.roomId, room.id));
+      return { track: pickNextTrack(files, req.query.after) ?? null };
+    },
+  );
 }
