@@ -51,6 +51,10 @@ This recording is how a change is shown to work, so every pull request that chan
 - Assert playback through state (the audio element is playing, which track, what position). The video has no sound.
 - Run `npm run test:e2e` and get it passing before opening the pull request.
 
+## Pull requests from issues
+
+When you implement an issue in GitHub Actions (an `@claude` comment), open the pull request yourself once the branch is pushed and the tests pass: `gh pr create --base main --head <branch> --title ... --body ...`, with `Closes #<issue number>` in the body. Do not stop at a "Create PR" link; post the link only if `gh pr create` fails, and say why. CI then posts the e2e recording on the pull request.
+
 ## Product
 
 Music Rooms is a web app with named "rooms", each holding its own list of mp3 files. A visitor picks a room and hears continuous, ambient random playback of that room's tracks. Listeners in the same room should hear the same track at roughly the same position.

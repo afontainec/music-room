@@ -68,7 +68,8 @@ jobs:
           # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
           # prompt: 'Update the pull request description to include a summary of changes.'
 
-          # Lets Claude add packages, build and run the tests CLAUDE.md requires before a PR
+          # Lets Claude add packages, build and run the tests CLAUDE.md requires before a PR,
+          # and open the PR itself instead of leaving a "Create PR" link
           claude_args: |
             --model claude-opus-5-5
-            --allowedTools "Bash(npm install *),Bash(npm ci),Bash(npm run *),Bash(npm test *),Bash(npx playwright *)"
+            --allowedTools "Bash(npm install *),Bash(npm ci),Bash(npm run *),Bash(npm test *),Bash(npx playwright *),Bash(gh pr create *)"
