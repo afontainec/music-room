@@ -56,6 +56,8 @@ This recording is how a change is shown to work, so every pull request that chan
 
 When you implement an issue in GitHub Actions (an `@claude` comment), open the pull request yourself once the branch is pushed and the tests pass: `gh pr create --base main --head <branch> --title ... --body ...`, with `Closes #<issue number>` in the body. Do not stop at a "Create PR" link; post the link only if `gh pr create` fails, and say why. CI then posts the e2e recording on the pull request.
 
+In that job Postgres is already running: `.github/workflows/claude.yml` starts it as a service on `localhost:5432` and sets `DATABASE_URL`, with dependencies and Chromium installed. Do not try to start Postgres or Docker yourself (those commands are not allowed there); run `npm run test:e2e` directly. If it fails, report the actual error output rather than assuming the database is missing, and do not replace the run with a mocked API.
+
 ## Product
 
 Music Rooms is a web app with named "rooms", each holding its own list of mp3 files. A visitor picks a room and hears continuous, ambient random playback of that room's tracks. Listeners in the same room should hear the same track at roughly the same position.
