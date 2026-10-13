@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Walking skeleton (`GET /api/hello`) plus the database layer: the `rooms` and `room_files` tables, their Drizzle schema and a migration runner. The mp3 file layer (storage interface, upload/URL endpoints, serving) reads and writes `room_files`; the server connects to the database at startup when `DATABASE_URL` is set. The room API and the room selection page are built. No playback or auth. The Product, Stack and Design sections below come from the product brief and stack decisions made with the user; correct them when something is built differently.
+Walking skeleton (`GET /api/hello`) plus the database layer: the `rooms` and `room_files` tables, their Drizzle schema and a migration runner. The mp3 file layer (storage interface, upload/URL endpoints, serving) reads and writes `room_files`; the server connects to the database at startup when `DATABASE_URL` is set. The room API and the room selection page are built, and entering a room plays one random track (no continuous loop or sync yet). No auth. The Product, Stack and Design sections below come from the product brief and stack decisions made with the user; correct them when something is built differently.
 
 ## Commands
 
@@ -32,13 +32,14 @@ CI (`.github/workflows/ci.yml`) runs build, Vitest, the migrations (up, down, up
 - `server/src/storage/storage.ts` is the `Storage` interface (put/open/delete by key); `local.ts` is the disk implementation rooted at `STORAGE_DIR`. Swap it for S3 in `index.ts` only.
 - `server/src/files.ts` validates uploads (`.mp3` extension, `audio/mpeg`, ID3/frame-sync magic bytes, size up to `MAX_UPLOAD_BYTES`, default 20 MB) and external URLs (http/https ending in `.mp3`). External URLs are referenced, not re-hosted or fetched.
 - `server/src/routes/files.ts`: `POST /api/rooms/:roomId/files` (multipart `file`), `POST /api/rooms/:roomId/files/url` (`{ url }`), `GET /api/rooms/:roomId/files`, `GET /api/files/:id` (streams uploads with Range support, redirects URLs). These are registered only when `DATABASE_URL` is set, and are not behind auth yet.
-- `server/src/routes/rooms.ts`: `POST /api/rooms` (`{ name }`, 409 on a duplicate name), `GET /api/rooms`, `GET /api/rooms/:id` (room plus its `files`). Files are assigned to a room with the file routes above. Same registration condition, no auth yet. `docs/openapi.yaml` documents all of these; keep it in sync.
+- `server/src/routes/rooms.ts`: `POST /api/rooms` (`{ name }`, 409 on a duplicate name), `GET /api/rooms`, `GET /api/rooms/:id` (room plus its `files`), `GET /api/rooms/:id/next-track?after=<fileId>` (`{ track }`, a random pick from `server/src/playback.ts` that skips `after` unless it is the only track). Files are assigned to a room with the file routes above. Same registration condition, no auth yet. `docs/openapi.yaml` documents all of these; keep it in sync.
 - The Playwright web server runs `db:migrate` and needs Postgres (`docker compose up -d` locally).
 
 ## Web
 
 - `web/src/router.tsx` is a minimal History API router (`usePathname`, `navigate`, `Link`); `App.tsx` maps paths to pages. The server serves `index.html` for every non-API path, so client routes load directly.
-- `/` is the room selection page (`pages/RoomSelection.tsx`), `/rooms/:id` the room page (`pages/RoomPage.tsx`, a placeholder until playback). API calls live in `web/src/api/`.
+- `/` is the room selection page (`pages/RoomSelection.tsx`), `/rooms/:id` the room page (`pages/RoomPage.tsx`). API calls live in `web/src/api/`.
+- The room page asks the server for the next track, passing the room's last played track (kept in `sessionStorage`). `components/AudioPlayer.tsx` tries to autoplay and shows one Play button when the browser blocks it. Headless Chromium blocks autoplay on a direct page load but allows it after the click from the selection page; e2e tests use both paths, with silent mp3s from `e2e/mp3.ts`.
 
 ## E2E recordings
 
