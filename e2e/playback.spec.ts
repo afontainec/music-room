@@ -33,6 +33,23 @@ async function enterRoom(page: Page, name: string) {
 
 const audio = (page: Page) => page.locator('audio');
 
+// Under Playwright the browser's own autoplay block is unreliable: Playwright's scripted page
+// access counts as user activation, so play() may or may not be allowed on a fresh page load.
+// This applies the policy deterministically: play() is rejected until a real input event.
+async function blockAutoplay(page: Page) {
+  await page.addInitScript(() => {
+    let gesture = false;
+    for (const type of ['pointerdown', 'touchend', 'keydown', 'click']) {
+      window.addEventListener(type, (e) => (gesture ||= e.isTrusted), true);
+    }
+    const play = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function () {
+      if (!gesture) return Promise.reject(new DOMException('play() needs a user gesture', 'NotAllowedError'));
+      return play.call(this);
+    };
+  });
+}
+
 /** Waits until the audio element is really playing (not paused, position advancing). */
 async function expectPlaying(page: Page) {
   await expect
@@ -72,8 +89,8 @@ test.describe('Playback starts automatically or via a single play button (browse
 
   test('falls back to one Play button when autoplay is blocked', async ({ page, request }) => {
     const room = await createRoomWithTracks(request, 2);
-    // Loading the room URL directly gives no user gesture, so Chromium (like Safari) blocks
-    // autoplay. Firefox may allow it for this silent test track and simply play.
+    // Loading the room URL directly gives no user gesture, so the browser blocks autoplay.
+    await blockAutoplay(page);
     await page.goto(`/rooms/${room.id}`);
     const play = page.getByRole('button', { name: 'Play' });
     await expect(play).toBeVisible();
@@ -126,8 +143,10 @@ test.describe('Works reliably across major browsers (Chrome, Safari, Firefox)', 
 
     test('mobile: a tap on Play starts playback when autoplay is blocked', async ({ page, request }) => {
       const room = await createRoomWithTracks(request, 2);
+      await blockAutoplay(page);
       await page.goto(`/rooms/${room.id}`);
       const play = page.getByRole('button', { name: 'Play' });
+      await expect(play).toBeVisible();
       const box = (await play.boundingBox())!;
       expect(box.height).toBeGreaterThanOrEqual(44); // touch target
       await play.tap();
