@@ -27,6 +27,14 @@ h1 {
   color: #555;
 }
 
+.notice {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: #fff4e5;
+  color: #663c00;
+}
+
 .room-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));

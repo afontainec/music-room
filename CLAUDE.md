@@ -38,7 +38,7 @@ CI (`.github/workflows/ci.yml`) runs build, Vitest, the migrations (up, down, up
 ## Web
 
 - `web/src/router.tsx` is a minimal History API router (`usePathname`, `navigate`, `Link`); `App.tsx` maps paths to pages. The server serves `index.html` for every non-API path, so client routes load directly.
-- `/` is the room selection page (`pages/RoomSelection.tsx`), `/rooms/:id` the room page (`pages/RoomPage.tsx`). API calls live in `web/src/api/`.
+- `/` is the room selection page (`pages/RoomSelection.tsx`), `/rooms/:id` the room page (`pages/RoomPage.tsx`). An unknown or deleted room id (the API answers 404) keeps its URL but renders the selection page with a "Room not found" notice. API calls live in `web/src/api/`.
 - The room page asks the server for the next track, passing the room's last played track (kept in `sessionStorage`). As each track starts it prefetches the following pick (`next-track?after=<current>`) and swaps it into the same audio element on `ended`; the `turn` counter lets a one-track room replay the same src. Leaving the room unmounts and pauses the player and drops any pending pick. `components/AudioPlayer.tsx` tries to autoplay and shows one Play button when the browser blocks it. Headless Chromium blocks autoplay on a direct page load but allows it after the click from the selection page; e2e tests use both paths, with silent mp3s from `e2e/mp3.ts` and shared helpers in `e2e/room.ts`.
 
 ## E2E recordings

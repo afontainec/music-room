@@ -10,6 +10,7 @@ import {
 } from '../api/rooms';
 import { AudioPlayer } from '../components/AudioPlayer';
 import { Link } from '../router';
+import { RoomSelection } from './RoomSelection';
 
 type State =
   | { status: 'loading' }
@@ -84,13 +85,17 @@ export function RoomPage({ id }: { id: string }) {
       .catch(() => upNext.current === entry && setState({ status: 'error' }));
   };
 
+  // An unknown or deleted room keeps its address but offers the other rooms instead.
+  if (state.status === 'not-found') {
+    return <RoomSelection notice="Room not found. It may have been removed, so choose another room below." />;
+  }
+
   return (
     <main className="page">
       <Link to="/" className="back-link">
         ← All rooms
       </Link>
       {state.status === 'loading' && <p className="status">Loading room…</p>}
-      {state.status === 'not-found' && <h1>Room not found</h1>}
       {state.status === 'error' && (
         <p className="status" role="alert">
           Could not load this room. Please try again later.

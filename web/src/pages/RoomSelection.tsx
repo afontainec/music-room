@@ -5,7 +5,8 @@ import { Link } from '../router';
 type State = { status: 'loading' } | { status: 'error' } | { status: 'ready'; rooms: Room[] };
 
 // Rooms are fetched on every visit, so rooms added or removed since show up on reload.
-export function RoomSelection() {
+// `notice` explains why the visitor landed here, e.g. a link to a room that no longer exists.
+export function RoomSelection({ notice }: { notice?: string }) {
   const [state, setState] = useState<State>({ status: 'loading' });
 
   useEffect(() => {
@@ -21,6 +22,11 @@ export function RoomSelection() {
   return (
     <main className="page">
       <h1>Choose a room</h1>
+      {notice && (
+        <p className="notice" role="alert">
+          {notice}
+        </p>
+      )}
       {state.status === 'loading' && <p className="status">Loading rooms…</p>}
       {state.status === 'error' && (
         <p className="status" role="alert">
