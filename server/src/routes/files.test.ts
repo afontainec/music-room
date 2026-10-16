@@ -10,7 +10,7 @@ import type { Db } from '../db/client.js';
 import { migrateUp } from '../db/migrate.js';
 import * as schema from '../db/schema.js';
 import { rooms } from '../db/schema.js';
-import { validateMp3Upload, validateMp3Url } from '../files.js';
+import { trackName, validateMp3Upload, validateMp3Url } from '../files.js';
 import { LocalDiskStorage } from '../storage/local.js';
 
 const MAX = 1000;
@@ -42,6 +42,15 @@ describe('validation', () => {
     expect(() => validateMp3Url('nope')).toThrow();
     expect(() => validateMp3Url(undefined)).toThrow();
   });
+});
+
+describe('trackName', () => {
+  it('strips the extension from the original file name', () => {
+    expect(trackName({ originalName: 'Forest Birds.mp3', fileRef: 'r/x.mp3' })).toBe('Forest Birds');
+    expect(trackName({ originalName: 'wind.v2.MP3', fileRef: 'r/x.mp3' })).toBe('wind.v2');
+  });
+  it('falls back to the file reference', () =>
+    expect(trackName({ originalName: null, fileRef: 'https://example.com/a/stream.mp3' })).toBe('stream'));
 });
 
 describe('file routes', () => {
@@ -126,5 +135,42 @@ describe('file routes', () => {
     expect((await upload('a.mp3', 'audio/mpeg', mp3(), crypto.randomUUID())).statusCode).toBe(404);
     expect((await app.inject({ method: 'GET', url: '/api/files/nope' })).statusCode).toBe(404);
     expect((await app.inject({ method: 'GET', url: `/api/files/${crypto.randomUUID()}` })).statusCode).toBe(404);
+  });
+
+  it('lists every track of the room with id, name and playable url', async () => {
+    const song = (await upload('Forest Birds.mp3', 'audio/mpeg', mp3())).json();
+    const link = (
+      await app.inject({
+        method: 'POST',
+        url: `/api/rooms/${roomId}/files/url`,
+        payload: { url: 'https://example.com/a/wind.mp3' },
+      })
+    ).json();
+    const list = (await app.inject({ method: 'GET', url: `/api/rooms/${roomId}/files` })).json();
+    expect(list).toHaveLength(2);
+    expect(list).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: song.id, name: 'Forest Birds', url: `/api/files/${song.id}` }),
+        expect.objectContaining({ id: link.id, name: 'wind', url: `/api/files/${link.id}` }),
+      ]),
+    );
+    const served = await app.inject({ method: 'GET', url: list.find((t: { id: string }) => t.id === song.id).url });
+    expect(served.statusCode).toBe(200);
+  });
+
+  it('returns an empty list for a room without tracks and 404 for an unknown room', async () => {
+    const empty = await app.inject({ method: 'GET', url: `/api/rooms/${roomId}/files` });
+    expect(empty.statusCode).toBe(200);
+    expect(empty.json()).toEqual([]);
+    expect((await app.inject({ method: 'GET', url: `/api/rooms/${crypto.randomUUID()}/files` })).statusCode).toBe(404);
+    expect((await app.inject({ method: 'GET', url: '/api/rooms/nope/files' })).statusCode).toBe(404);
+  });
+
+  it('never includes tracks of other rooms', async () => {
+    const other = (await app.inject({ method: 'POST', url: '/api/rooms', payload: { name: 'Other' } })).json();
+    const mine = (await upload('mine.mp3', 'audio/mpeg', mp3())).json();
+    await upload('theirs.mp3', 'audio/mpeg', mp3(), other.id);
+    const list = (await app.inject({ method: 'GET', url: `/api/rooms/${roomId}/files` })).json();
+    expect(list.map((t: { id: string }) => t.id)).toEqual([mine.id]);
   });
 });

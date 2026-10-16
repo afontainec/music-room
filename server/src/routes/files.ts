@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { Db } from '../db/client.js';
 import { roomFiles, rooms } from '../db/schema.js';
-import { ValidationError, validateMp3Upload, validateMp3Url } from '../files.js';
+import { trackName, ValidationError, validateMp3Upload, validateMp3Url } from '../files.js';
 import type { Storage } from '../storage/storage.js';
 
 export interface FileRoutesOptions {
@@ -49,7 +49,9 @@ export async function fileRoutes(app: FastifyInstance, opts: FileRoutesOptions) 
 
   app.get<{ Params: { roomId: string } }>('/api/rooms/:roomId/files', async (req, reply) => {
     if (!(await roomExists(req.params.roomId))) return reply.code(404).send({ error: 'Room not found' });
-    return db.select().from(roomFiles).where(eq(roomFiles.roomId, req.params.roomId));
+    const files = await db.select().from(roomFiles).where(eq(roomFiles.roomId, req.params.roomId));
+    // `url` is same-origin, so it plays both locally and behind Railway's proxy.
+    return files.map((f) => ({ ...f, name: trackName(f), url: `/api/files/${f.id}` }));
   });
 
   // Multipart upload: one mp3 in the `file` field.
