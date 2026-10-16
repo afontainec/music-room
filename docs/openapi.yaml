@@ -111,16 +111,26 @@ paths:
           type: string
           format: uuid
     get:
-      summary: List a room's files
+      summary: List a room's tracks with a display name and playable URL
       responses:
         '200':
-          description: Files
+          description: Every track of the room (an empty array when it has none)
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/RoomFile'
+                  allOf:
+                    - $ref: '#/components/schemas/RoomFile'
+                    - type: object
+                      required: [name, url]
+                      properties:
+                        name:
+                          type: string
+                          description: Original file name without its extension (the storage key or URL when unknown)
+                        url:
+                          type: string
+                          description: Same-origin playback path, `/api/files/{id}`
         '404':
           $ref: '#/components/responses/Error'
     post:

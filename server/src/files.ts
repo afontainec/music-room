@@ -18,6 +18,12 @@ export function validateMp3Upload(file: { filename: string; mimeType: string; da
   if (!looksLikeMp3(file.data)) throw new ValidationError('File content is not an mp3');
 }
 
+/** Display name of a track: its original file name without the extension, else its storage key or URL. */
+export function trackName(file: { originalName: string | null; fileRef: string }): string {
+  const name = file.originalName ?? file.fileRef;
+  return path.basename(name, path.extname(name)) || name;
+}
+
 /** External tracks are referenced, not re-hosted, so only the URL itself can be checked. */
 export function validateMp3Url(raw: unknown): string {
   if (typeof raw !== 'string') throw new ValidationError('url is required');
