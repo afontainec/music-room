@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Walking skeleton (`GET /api/hello`) plus the database layer: the `rooms` and `room_files` tables, their Drizzle schema and a migration runner. The mp3 file layer (storage interface, upload/URL endpoints, serving) reads and writes `room_files`; the server connects to the database at startup when `DATABASE_URL` is set. The room API and the room selection page are built, and entering a room plays random tracks back to back until the visitor leaves (no sync yet). No auth. The Product, Stack and Design sections below come from the product brief and stack decisions made with the user; correct them when something is built differently.
+Walking skeleton (`GET /api/hello`) plus the database layer: the `rooms` and `room_files` tables, their Drizzle schema and a migration runner. The mp3 file layer (storage interface, upload/URL endpoints, serving) reads and writes `room_files`; the server connects to the database at startup when `DATABASE_URL` is set. The room API and the room selection page are built, and entering a room plays random tracks back to back until the visitor leaves (no server-side layer assignment yet). No auth. The Product, Stack and Design sections below come from the product brief and stack decisions made with the user; correct them when something is built differently.
 
 ## Commands
 
@@ -60,11 +60,11 @@ In that job Postgres is already running: `.github/workflows/claude.yml` starts i
 
 ## Product
 
-Music Rooms is a web app with named "rooms", each holding its own list of mp3 files. A visitor picks a room and hears continuous, ambient random playback of that room's tracks. Listeners in the same room should hear the same track at roughly the same position.
+Music Rooms is a web app with named "rooms", each holding its own list of mp3 files. Each room is a soundscape (for example a forest) and its tracks are the layers: birds, wind, a water stream, forest-inspired music. Visitors are usually together in one physical space, each with a phone on speaker, and each device plays one layer, so the devices together make up the scene. Devices in a room play different tracks, not the same one.
 
 Three audiences:
 
-- **Visitors** (desktop and mobile browsers, no login): choose a room, listen, control their own volume and mute.
+- **Visitors** (desktop and mobile browsers, no login): choose a room, listen to the layer their device is given (they see its name but cannot choose it), control their own volume and mute.
 - **Staff/admins** (logged in): create, rename and delete rooms; upload, list and remove mp3s per room. Changes must show up immediately in the public app.
 - **Owner**: basic analytics — room visits and track plays per room, filterable by date range.
 
@@ -77,7 +77,7 @@ Confirmed:
 - **Database**: Postgres, accessed through Drizzle ORM (schema and migrations in TypeScript)
 - **Repo layout**: npm workspaces with `server/` and `web/` packages
 - **Tests**: Vitest
-- **Sync transport**: WebSockets — a default, to revisit once expected listeners per room and acceptable drift are known
+- **Realtime transport**: not needed for the soundscape model; layer assignment is request/response plus a presence heartbeat. Add WebSockets only if a later feature needs push
 - **Hosting**: Railway — one long-running Node service, managed Postgres, and a persistent volume for mp3s
 - **Mp3 storage**: local disk (the Railway volume) for the MVP, to be swapped for S3-compatible object storage later
 
@@ -89,8 +89,10 @@ Hosting consequences to design around:
 
 ## Design constraints
 
-- **Playback is room-level, not client-level.** Synchronized listening means the track order and current position belong to the room (server-authoritative), and clients join at the room's current track and offset. Random selection therefore cannot live only in the browser, even in the pre-sync milestones — build random playback so it can move to the server without a rewrite.
-- **No immediate repeats**: the random pick must never choose the track that just played. Mind the one-track room, where repeating is the only option.
+- **One layer per device, assigned by the server.** When a device joins or its track ends, the server gives it the room's least-used track among the devices currently present (tracked with a heartbeat), so layers spread across devices before any repeats. Assignment cannot live only in the browser, because a device cannot see what the others are playing. Each device plays exactly one layer, even when only one or two people are in the room.
+- **No immediate repeats**: a device's next layer must never be the track it just played. Mind the one-track room, where repeating is the only option.
+- **Loose timing, no clock sync.** Devices switch layers independently when their own track ends, and each layer fades in over a few seconds wherever it starts. A few seconds' offset between devices is acceptable; there is no shared timeline, drift correction or beat alignment. Beat-aligned entry for musical layers may come later (a BPM per room set by staff, tracks tagged musical or ambient).
+- **Autoplay will be blocked.** Browsers block sound until a tap, so the player must show a clear "Tap to listen" control, and should keep playing with the screen locked where the browser allows.
 - **Storage behind an interface.** File access goes through one storage abstraction so local disk can be replaced by S3 without touching callers.
 - **Tracks have two sources**: uploaded file or external URL. Both validate file type and size; the size limit is not decided yet, so keep it configurable.
 - **Admin auth**: every admin action requires authentication. A single shared staff account is acceptable for now; visitor routes stay public.
@@ -103,7 +105,7 @@ Hosting consequences to design around:
 3. Room selection page
 4. Random playback
 5. Continuous loop
-6. Sync
+6. Soundscape layer assignment
 7. Admin auth and dashboard
 8. Volume controls
 9. Analytics
@@ -112,5 +114,6 @@ Hosting consequences to design around:
 
 Ask rather than guess when work depends on these:
 
-- Expected concurrent listeners per room, and acceptable sync drift (may change the WebSocket default and decides how much clock correction is needed)
 - Maximum mp3 file size
+
+Decided with the user: 10 to 100 devices per room, a few seconds of timing offset between devices is acceptable, and two devices may share a layer only once every layer is in use.
