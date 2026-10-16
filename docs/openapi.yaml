@@ -102,6 +102,100 @@ paths:
                       - $ref: '#/components/schemas/RoomFile'
         '404':
           $ref: '#/components/responses/Error'
+  /api/rooms/{id}/presence/heartbeat:
+    post:
+      summary: Register or refresh a listening device in the room
+      description: >-
+        Send every few seconds while listening. A device stops counting as present 30 seconds
+        after its last heartbeat. Presence is held in memory and is lost on a server restart;
+        devices re-register with their next heartbeat.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deviceId]
+              properties:
+                deviceId:
+                  type: string
+                  pattern: '^[A-Za-z0-9_-]{1,64}$'
+                  description: Chosen by the device, e.g. a random UUID kept in storage
+                trackId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: The track the device is playing, if any
+      responses:
+        '200':
+          description: The device's presence entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresentDevice'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /api/rooms/{id}/presence:
+    get:
+      summary: Devices currently present in the room
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Devices heard from in the last 30 seconds
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [devices]
+                properties:
+                  devices:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PresentDevice'
+        '404':
+          $ref: '#/components/responses/Error'
+  /api/rooms/{id}/presence/{deviceId}:
+    delete:
+      summary: Leave the room (removes the device immediately)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Removed
+        '404':
+          description: Unknown room, or the device is not present in it
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
   /api/rooms/{roomId}/files:
     parameters:
       - name: roomId
@@ -267,3 +361,16 @@ components:
         createdAt:
           type: string
           format: date-time
+    PresentDevice:
+      type: object
+      required: [deviceId, trackId, lastSeen]
+      properties:
+        deviceId:
+          type: string
+        trackId:
+          type: string
+          format: uuid
+          nullable: true
+        lastSeen:
+          type: integer
+          description: Time of the last heartbeat, in milliseconds since the epoch
