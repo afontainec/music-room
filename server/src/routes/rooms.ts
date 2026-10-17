@@ -1,11 +1,17 @@
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import type { FastifyInstance, preHandlerHookHandler } from 'fastify';
 import type { Db } from '../db/client.js';
 import { roomFiles, rooms } from '../db/schema.js';
 import { pickNextTrack } from '../playback.js';
+import type { Presence } from '../presence.js';
+import type { Storage } from '../storage/storage.js';
 
 export interface RoomRoutesOptions {
   db: Db;
+  /** Deleting a room deletes its uploaded mp3s. */
+  storage: Storage;
+  /** Deleting a room forgets the devices listening in it. */
+  presence: Presence;
   /** Guards the admin routes (staff only); the read routes stay public. */
   requireAdmin: preHandlerHookHandler;
 }
@@ -13,20 +19,86 @@ export interface RoomRoutesOptions {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_NAME_LENGTH = 100;
 
+/** The trimmed name, or the 400 error. */
+function parseName(value: unknown): { name: string } | { error: string } {
+  const name = typeof value === 'string' ? value.trim() : '';
+  if (!name) return { error: 'Room name is required' };
+  if (name.length > MAX_NAME_LENGTH) return { error: `Room name must be at most ${MAX_NAME_LENGTH} characters` };
+  return { name };
+}
+
+const duplicateName = (name: string) => ({ error: `A room named "${name}" already exists` });
+
+// Postgres unique_violation; drizzle wraps driver errors, so look at the cause too.
+function isUniqueViolation(err: unknown): boolean {
+  const e = err as { code?: unknown; cause?: { code?: unknown } } | null;
+  return e?.code === '23505' || e?.cause?.code === '23505';
+}
+
 // Files are assigned to a room through the file routes: POST /api/rooms/:roomId/files (upload)
 // and POST /api/rooms/:roomId/files/url (external URL).
 export async function roomRoutes(app: FastifyInstance, opts: RoomRoutesOptions) {
-  const { db, requireAdmin } = opts;
+  const { db, storage, presence, requireAdmin } = opts;
 
   app.post<{ Body: { name?: unknown } }>('/api/rooms', { preHandler: requireAdmin }, async (req, reply) => {
-    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
-    if (!name) return reply.code(400).send({ error: 'Room name is required' });
-    if (name.length > MAX_NAME_LENGTH) {
-      return reply.code(400).send({ error: `Room name must be at most ${MAX_NAME_LENGTH} characters` });
-    }
+    const parsed = parseName(req.body?.name);
+    if ('error' in parsed) return reply.code(400).send(parsed);
+    const { name } = parsed;
     const [room] = await db.insert(rooms).values({ name }).onConflictDoNothing().returning();
-    if (!room) return reply.code(409).send({ error: `A room named "${name}" already exists` });
+    if (!room) return reply.code(409).send(duplicateName(name));
     return reply.code(201).send(room);
+  });
+
+  // Rename. The unique constraint, not a prior lookup, decides duplicates, so two renames cannot race.
+  app.patch<{ Params: { id: string }; Body: { name?: unknown } }>(
+    '/api/rooms/:id',
+    { preHandler: requireAdmin },
+    async (req, reply) => {
+      if (!UUID.test(req.params.id)) return reply.code(404).send({ error: 'Room not found' });
+      const parsed = parseName(req.body?.name);
+      if ('error' in parsed) return reply.code(400).send(parsed);
+      const { name } = parsed;
+      try {
+        const [room] = await db
+          .update(rooms)
+          .set({ name, updatedAt: sql`now()` })
+          .where(eq(rooms.id, req.params.id))
+          .returning();
+        if (!room) return reply.code(404).send({ error: 'Room not found' });
+        return room;
+      } catch (err) {
+        if (isUniqueViolation(err)) return reply.code(409).send(duplicateName(name));
+        throw err;
+      }
+    },
+  );
+
+  // Removes the room and its tracks in one transaction, then the uploaded mp3s and the room's
+  // presence. Blobs go after the commit, so a failed transaction leaves every track playable;
+  // a blob that fails to delete is logged as an orphan, since the room is gone either way.
+  app.delete<{ Params: { id: string } }>('/api/rooms/:id', { preHandler: requireAdmin }, async (req, reply) => {
+    const roomId = req.params.id;
+    if (!UUID.test(roomId)) return reply.code(404).send({ error: 'Room not found' });
+    const files = await db.transaction(async (tx) => {
+      // Locking the room blocks concurrent track inserts (their foreign key check), so every
+      // track is in the list below and none is removed by the cascade without its blob.
+      const [room] = await tx.select({ id: rooms.id }).from(rooms).where(eq(rooms.id, roomId)).for('update');
+      if (!room) return null;
+      const deleted = await tx.delete(roomFiles).where(eq(roomFiles.roomId, roomId)).returning();
+      await tx.delete(rooms).where(eq(rooms.id, roomId));
+      return deleted;
+    });
+    if (!files) return reply.code(404).send({ error: 'Room not found' });
+
+    presence.clearRoom(roomId);
+    const keys = files.filter((f) => f.source === 'upload').map((f) => f.fileRef);
+    const results = await Promise.allSettled(keys.map((key) => storage.delete(key)));
+    results.forEach((result, i) => {
+      if (result.status === 'rejected') {
+        req.log.error({ err: result.reason, roomId, key: keys[i] }, 'Could not delete an mp3 of a deleted room');
+      }
+    });
+    return reply.code(204).send();
   });
 
   app.get('/api/rooms', async () => db.select().from(rooms).orderBy(asc(rooms.name)));

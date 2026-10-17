@@ -48,6 +48,11 @@ export class Presence {
     return true;
   }
 
+  /** Forgets every device in the room, e.g. when the room is deleted. */
+  clearRoom(roomId: string): void {
+    this.rooms.delete(roomId);
+  }
+
   /** Devices heard from within the TTL. Expired ones are dropped here too, so a device
    * disappears exactly at the TTL rather than at the next sweep. */
   present(roomId: string): PresentDevice[] {

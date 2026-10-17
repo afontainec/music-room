@@ -133,6 +133,66 @@ paths:
                           $ref: '#/components/schemas/RoomFile'
         '404':
           $ref: '#/components/responses/Error'
+    patch:
+      summary: Rename a room
+      security:
+        - staffToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  maxLength: 100
+                  description: Unique, trimmed
+      responses:
+        '200':
+          description: The renamed room
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+    delete:
+      summary: Delete a room with its tracks
+      description: >-
+        Deletes the room and its tracks in one transaction, then the uploaded mp3s (external URLs
+        are only referenced, so nothing is fetched or deleted for them) and the devices present in
+        the room. An mp3 that cannot be deleted is logged by the server; the room is deleted anyway.
+      security:
+        - staffToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/Error'
   /api/rooms/{id}/next-track:
     get:
       summary: A random track of the room to play next

@@ -47,6 +47,69 @@ test('GET /rooms/:id returns room details and its file list', async ({ request }
   expect(body.files[0]).toMatchObject({ source: 'url', fileRef: 'https://example.com/one.mp3' });
 });
 
+test('PATCH /api/rooms/:id rejects empty or duplicate names with a clear error and otherwise updates the name', async ({
+  request,
+}) => {
+  const headers = await adminHeaders(request);
+  const taken = unique();
+  await request.post('/api/rooms', { headers, data: { name: taken } });
+  const room = await (await request.post('/api/rooms', { headers, data: { name: unique() } })).json();
+
+  const empty = await request.patch(`/api/rooms/${room.id}`, { headers, data: { name: '  ' } });
+  expect(empty.status()).toBe(400);
+  expect(await empty.json()).toEqual({ error: 'Room name is required' });
+
+  const duplicate = await request.patch(`/api/rooms/${room.id}`, { headers, data: { name: taken } });
+  expect(duplicate.status()).toBe(409);
+  expect(await duplicate.json()).toEqual({ error: `A room named "${taken}" already exists` });
+
+  const name = unique();
+  const renamed = await request.patch(`/api/rooms/${room.id}`, { headers, data: { name: ` ${name} ` } });
+  expect(renamed.status()).toBe(200);
+  expect(await renamed.json()).toMatchObject({ id: room.id, name });
+  expect(await (await request.get(`/api/rooms/${room.id}`)).json()).toMatchObject({ name });
+});
+
+test('DELETE /api/rooms/:id removes the room, its files, their stored mp3s and its playback state', async ({
+  request,
+}) => {
+  const headers = await adminHeaders(request);
+  const room = await (await request.post('/api/rooms', { headers, data: { name: unique() } })).json();
+  const upload = await (
+    await request.post(`/api/rooms/${room.id}/files`, {
+      headers,
+      multipart: { file: { name: 'birds.mp3', mimeType: 'audio/mpeg', buffer: mp3 } },
+    })
+  ).json();
+  const link = await (
+    await request.post(`/api/rooms/${room.id}/files/url`, { headers, data: { url: 'https://example.com/wind.mp3' } })
+  ).json();
+  await request.post(`/api/rooms/${room.id}/presence/heartbeat`, { data: { deviceId: unique(), trackId: upload.id } });
+  expect((await request.get(`/api/files/${upload.id}`)).status()).toBe(200);
+
+  const res = await request.delete(`/api/rooms/${room.id}`, { headers });
+  expect(res.status()).toBe(204);
+  expect((await request.get(`/api/rooms/${room.id}`)).status()).toBe(404);
+  expect((await (await request.get('/api/rooms')).json()).map((r: { id: string }) => r.id)).not.toContain(room.id);
+  expect((await request.get(`/api/files/${upload.id}`)).status()).toBe(404);
+  expect((await request.get(`/api/files/${link.id}`, { maxRedirects: 0 })).status()).toBe(404);
+  expect((await request.get(`/api/rooms/${room.id}/presence`)).status()).toBe(404);
+});
+
+test('Deleting or renaming a non-existent room returns 404', async ({ request }) => {
+  const headers = await adminHeaders(request);
+  const missing = '00000000-0000-4000-8000-000000000000';
+  const rename = await request.patch(`/api/rooms/${missing}`, { headers, data: { name: unique() } });
+  expect(rename.status()).toBe(404);
+  expect(await rename.json()).toEqual({ error: 'Room not found' });
+  expect((await request.delete(`/api/rooms/${missing}`, { headers })).status()).toBe(404);
+
+  const room = await (await request.post('/api/rooms', { headers, data: { name: unique() } })).json();
+  expect((await request.delete(`/api/rooms/${room.id}`, { headers })).status()).toBe(204);
+  expect((await request.delete(`/api/rooms/${room.id}`, { headers })).status()).toBe(404);
+  expect((await request.patch(`/api/rooms/${room.id}`, { headers, data: { name: unique() } })).status()).toBe(404);
+});
+
 test('Duplicate room name returns clear error', async ({ request }) => {
   const headers = await adminHeaders(request);
   const name = unique();
