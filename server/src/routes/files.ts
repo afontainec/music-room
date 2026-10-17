@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import fastifyMultipart from '@fastify/multipart';
 import { eq } from 'drizzle-orm';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, preHandlerHookHandler } from 'fastify';
 import type { Db } from '../db/client.js';
 import { roomFiles, rooms } from '../db/schema.js';
 import { trackName, ValidationError, validateMp3Upload, validateMp3Url } from '../files.js';
@@ -12,6 +12,8 @@ export interface FileRoutesOptions {
   db: Db;
   storage: Storage;
   maxUploadBytes: number;
+  /** Guards the admin routes (staff only); listing and playback stay public. */
+  requireAdmin: preHandlerHookHandler;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -32,7 +34,7 @@ function parseRange(header: string, size: number): { start: number; end: number 
 }
 
 export async function fileRoutes(app: FastifyInstance, opts: FileRoutesOptions) {
-  const { db, storage, maxUploadBytes } = opts;
+  const { db, storage, maxUploadBytes, requireAdmin } = opts;
 
   await app.register(fastifyMultipart, { limits: { fileSize: maxUploadBytes, files: 1 } });
 
@@ -54,8 +56,8 @@ export async function fileRoutes(app: FastifyInstance, opts: FileRoutesOptions) 
     return files.map((f) => ({ ...f, name: trackName(f), url: `/api/files/${f.id}` }));
   });
 
-  // Multipart upload: one mp3 in the `file` field.
-  app.post<{ Params: { roomId: string } }>('/api/rooms/:roomId/files', async (req, reply) => {
+  // Multipart upload: one mp3 in the `file` field. The auth check runs before the file is read.
+  app.post<{ Params: { roomId: string } }>('/api/rooms/:roomId/files', { preHandler: requireAdmin }, async (req, reply) => {
     if (!(await roomExists(req.params.roomId))) return reply.code(404).send({ error: 'Room not found' });
     const part = await req.file();
     if (!part) throw new ValidationError('Multipart field "file" is required');
@@ -92,6 +94,7 @@ export async function fileRoutes(app: FastifyInstance, opts: FileRoutesOptions) 
   // Link an external mp3 by URL.
   app.post<{ Params: { roomId: string }; Body: { url?: unknown } }>(
     '/api/rooms/:roomId/files/url',
+    { preHandler: requireAdmin },
     async (req, reply) => {
       if (!(await roomExists(req.params.roomId))) return reply.code(404).send({ error: 'Room not found' });
       const url = validateMp3Url(req.body?.url);

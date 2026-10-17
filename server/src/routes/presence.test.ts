@@ -11,6 +11,7 @@ import { migrateUp } from '../db/migrate.js';
 import * as schema from '../db/schema.js';
 import { Presence } from '../presence.js';
 import { LocalDiskStorage } from '../storage/local.js';
+import { adminHeaders, testAuth } from '../test/admin.js';
 
 const MISSING = '00000000-0000-0000-0000-000000000000';
 const TRACK = '11111111-1111-1111-1111-111111111111';
@@ -26,8 +27,10 @@ describe('presence routes', () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'music-room-'));
     clock = 1_000_000;
     const presence = new Presence({ now: () => clock });
-    app = await buildApp({ db, storage: new LocalDiskStorage(dir), maxUploadBytes: 1000, presence });
-    roomId = (await app.inject({ method: 'POST', url: '/api/rooms', payload: { name: 'Forest' } })).json().id;
+    const auth = testAuth();
+    app = await buildApp({ db, storage: new LocalDiskStorage(dir), maxUploadBytes: 1000, presence, auth });
+    const headers = adminHeaders(auth);
+    roomId = (await app.inject({ method: 'POST', url: '/api/rooms', headers, payload: { name: 'Forest' } })).json().id;
   });
 
   afterEach(() => app.close());

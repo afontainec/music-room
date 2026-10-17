@@ -11,6 +11,10 @@ import { migrateUp } from '../db/migrate.js';
 import * as schema from '../db/schema.js';
 import { Presence } from '../presence.js';
 import { LocalDiskStorage } from '../storage/local.js';
+import { adminHeaders, testAuth } from '../test/admin.js';
+
+const auth = testAuth();
+const admin = adminHeaders(auth);
 
 const MISSING = '00000000-0000-0000-0000-000000000000';
 
@@ -23,19 +27,21 @@ describe('layer routes', () => {
     await migrateUp(db);
     const dir = await mkdtemp(path.join(tmpdir(), 'music-room-'));
     presence = new Presence();
-    app = await buildApp({ db, storage: new LocalDiskStorage(dir), maxUploadBytes: 1000, presence });
+    app = await buildApp({ db, storage: new LocalDiskStorage(dir), maxUploadBytes: 1000, presence, auth });
   });
 
   afterEach(() => app.close());
 
   // A room with `count` external-URL tracks named track-1 ... track-N.
   async function createRoom(count: number) {
-    const room = (await app.inject({ method: 'POST', url: '/api/rooms', payload: { name: 'Forest' } })).json();
+    const room = (await app.inject({ method: 'POST', url: '/api/rooms', headers: admin, payload: { name: 'Forest' } }))
+      .json();
     const trackIds: string[] = [];
     for (let i = 1; i <= count; i++) {
       const res = await app.inject({
         method: 'POST',
         url: `/api/rooms/${room.id}/files/url`,
+        headers: admin,
         payload: { url: `https://example.com/track-${i}.mp3` },
       });
       trackIds.push(res.json().id);

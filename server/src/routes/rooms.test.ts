@@ -10,6 +10,10 @@ import type { Db } from '../db/client.js';
 import { migrateUp } from '../db/migrate.js';
 import * as schema from '../db/schema.js';
 import { LocalDiskStorage } from '../storage/local.js';
+import { adminHeaders, testAuth } from '../test/admin.js';
+
+const auth = testAuth();
+const admin = adminHeaders(auth);
 
 describe('room routes', () => {
   let app: FastifyInstance;
@@ -18,10 +22,20 @@ describe('room routes', () => {
     const db: Db = drizzle(new PGlite(), { schema });
     await migrateUp(db);
     const dir = await mkdtemp(path.join(tmpdir(), 'music-room-'));
-    app = await buildApp({ db, storage: new LocalDiskStorage(dir), maxUploadBytes: 1000 });
+    app = await buildApp({ db, storage: new LocalDiskStorage(dir), maxUploadBytes: 1000, auth });
   });
 
-  const create = (name: unknown) => app.inject({ method: 'POST', url: '/api/rooms', payload: { name } });
+  const create = (name: unknown, headers = admin) =>
+    app.inject({ method: 'POST', url: '/api/rooms', headers, payload: { name } });
+
+  it('rejects creating a room without a valid staff session', async () => {
+    const missing = await create('Chill', {});
+    expect(missing.statusCode).toBe(401);
+    expect(missing.headers['www-authenticate']).toBe('Bearer');
+    expect(missing.json()).toEqual({ error: 'Authentication required' });
+    expect((await create('Chill', { authorization: 'Bearer nope' })).statusCode).toBe(401);
+    expect((await app.inject({ method: 'GET', url: '/api/rooms' })).json()).toEqual([]);
+  });
 
   it('creates a room', async () => {
     const res = await create('  Chill ');
@@ -55,6 +69,7 @@ describe('room routes', () => {
     await app.inject({
       method: 'POST',
       url: `/api/rooms/${room.id}/files/url`,
+      headers: admin,
       payload: { url: 'https://example.com/one.mp3' },
     });
     const res = await app.inject({ method: 'GET', url: `/api/rooms/${room.id}` });
@@ -66,7 +81,7 @@ describe('room routes', () => {
 
   describe('next track', () => {
     const addUrl = async (roomId: string, url: string) =>
-      (await app.inject({ method: 'POST', url: `/api/rooms/${roomId}/files/url`, payload: { url } })).json();
+      (await app.inject({ method: 'POST', url: `/api/rooms/${roomId}/files/url`, headers: admin, payload: { url } })).json();
     const next = (roomId: string, after?: string) =>
       app.inject({ method: 'GET', url: `/api/rooms/${roomId}/next-track${after ? `?after=${after}` : ''}` });
 

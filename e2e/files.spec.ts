@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import pg from 'pg';
+import { adminHeaders } from './admin';
 
 const databaseUrl = process.env.DATABASE_URL ?? 'postgres://music_room:music_room@localhost:5432/music_room';
 
@@ -21,6 +22,7 @@ const mp3 = Buffer.concat([Buffer.from('ID3'), Buffer.alloc(997, 7)]);
 test('Mp3 files can be uploaded via multipart endpoint', async ({ request }) => {
   const roomId = await createRoom();
   const res = await request.post(`/api/rooms/${roomId}/files`, {
+    headers: await adminHeaders(request),
     multipart: { file: { name: 'song.mp3', mimeType: 'audio/mpeg', buffer: mp3 } },
   });
   expect(res.status()).toBe(201);
@@ -30,6 +32,7 @@ test('Mp3 files can be uploaded via multipart endpoint', async ({ request }) => 
 test('Mp3 files can be linked via URL', async ({ request }) => {
   const roomId = await createRoom();
   const res = await request.post(`/api/rooms/${roomId}/files/url`, {
+    headers: await adminHeaders(request),
     data: { url: 'https://example.com/one.mp3' },
   });
   expect(res.status()).toBe(201);
@@ -39,6 +42,7 @@ test('Mp3 files can be linked via URL', async ({ request }) => {
 test('File type is validated before persisting', async ({ request }) => {
   const roomId = await createRoom();
   const res = await request.post(`/api/rooms/${roomId}/files`, {
+    headers: await adminHeaders(request),
     multipart: { file: { name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') } },
   });
   expect(res.status()).toBe(400);
@@ -50,6 +54,7 @@ test('File size is validated before persisting', async ({ request }) => {
   const roomId = await createRoom();
   const tooBig = Buffer.concat([Buffer.from('ID3'), Buffer.alloc(21 * 1024 * 1024)]);
   const res = await request.post(`/api/rooms/${roomId}/files`, {
+    headers: await adminHeaders(request),
     multipart: { file: { name: 'big.mp3', mimeType: 'audio/mpeg', buffer: tooBig } },
   });
   expect(res.status()).toBeGreaterThanOrEqual(400);
@@ -60,6 +65,7 @@ test('File size is validated before persisting', async ({ request }) => {
 test('File metadata is stored in room_files and the file is servable for playback', async ({ request }) => {
   const roomId = await createRoom();
   const up = await request.post(`/api/rooms/${roomId}/files`, {
+    headers: await adminHeaders(request),
     multipart: { file: { name: 'song.mp3', mimeType: 'audio/mpeg', buffer: mp3 } },
   });
   const file = await up.json();

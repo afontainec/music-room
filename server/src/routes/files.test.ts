@@ -12,6 +12,7 @@ import * as schema from '../db/schema.js';
 import { rooms } from '../db/schema.js';
 import { trackName, validateMp3Upload, validateMp3Url } from '../files.js';
 import { LocalDiskStorage } from '../storage/local.js';
+import { adminHeaders, testAuth } from '../test/admin.js';
 
 const MAX = 1000;
 const mp3 = (size = 100) => Buffer.concat([Buffer.from('ID3'), Buffer.alloc(size - 3, 1)]);
@@ -58,6 +59,7 @@ describe('file routes', () => {
   let app: FastifyInstance;
   let dir: string;
   let roomId: string;
+  let admin: Record<string, string>;
 
   beforeEach(async () => {
     client = new PGlite();
@@ -66,7 +68,9 @@ describe('file routes', () => {
     const [room] = await db.insert(rooms).values({ name: 'Chill' }).returning({ id: rooms.id });
     roomId = room!.id;
     dir = await mkdtemp(path.join(tmpdir(), 'music-room-'));
-    app = await buildApp({ db, storage: new LocalDiskStorage(dir), maxUploadBytes: MAX });
+    const auth = testAuth();
+    admin = adminHeaders(auth);
+    app = await buildApp({ db, storage: new LocalDiskStorage(dir), maxUploadBytes: MAX, auth });
   });
 
   afterEach(async () => {
@@ -75,8 +79,28 @@ describe('file routes', () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  const upload = (filename: string, type: string, data: Buffer, room = roomId) =>
-    app.inject({ method: 'POST', url: `/api/rooms/${room}/files`, ...multipart(filename, type, data) });
+  const upload = (filename: string, type: string, data: Buffer, room = roomId, headers = admin) => {
+    const form = multipart(filename, type, data);
+    return app.inject({
+      method: 'POST',
+      url: `/api/rooms/${room}/files`,
+      body: form.body,
+      headers: { ...form.headers, ...headers },
+    });
+  };
+
+  it('rejects uploads and links without a staff session', async () => {
+    expect((await upload('song.mp3', 'audio/mpeg', mp3(), roomId, {})).statusCode).toBe(401);
+    const forged = { authorization: 'Bearer forged.token' };
+    expect((await upload('song.mp3', 'audio/mpeg', mp3(), roomId, forged)).statusCode).toBe(401);
+    const link = await app.inject({
+      method: 'POST',
+      url: `/api/rooms/${roomId}/files/url`,
+      payload: { url: 'https://example.com/one.mp3' },
+    });
+    expect(link.statusCode).toBe(401);
+    expect((await app.inject({ method: 'GET', url: `/api/rooms/${roomId}/files` })).json()).toEqual([]);
+  });
 
   it('persists an upload, links it to the room and serves it', async () => {
     const data = mp3(200);
@@ -117,6 +141,7 @@ describe('file routes', () => {
     const res = await app.inject({
       method: 'POST',
       url: `/api/rooms/${roomId}/files/url`,
+      headers: admin,
       payload: { url: 'https://example.com/tracks/one.mp3' },
     });
     expect(res.statusCode).toBe(201);
@@ -127,7 +152,7 @@ describe('file routes', () => {
   });
 
   it('rejects invalid urls', async () => {
-    const res = await app.inject({ method: 'POST', url: `/api/rooms/${roomId}/files/url`, payload: { url: 'x' } });
+    const res = await app.inject({ method: 'POST', url: `/api/rooms/${roomId}/files/url`, headers: admin, payload: { url: 'x' } });
     expect(res.statusCode).toBe(400);
   });
 
@@ -143,6 +168,7 @@ describe('file routes', () => {
       await app.inject({
         method: 'POST',
         url: `/api/rooms/${roomId}/files/url`,
+        headers: admin,
         payload: { url: 'https://example.com/a/wind.mp3' },
       })
     ).json();
@@ -167,7 +193,7 @@ describe('file routes', () => {
   });
 
   it('never includes tracks of other rooms', async () => {
-    const other = (await app.inject({ method: 'POST', url: '/api/rooms', payload: { name: 'Other' } })).json();
+    const other = (await app.inject({ method: 'POST', url: '/api/rooms', headers: admin, payload: { name: 'Other' } })).json();
     const mine = (await upload('mine.mp3', 'audio/mpeg', mp3())).json();
     await upload('theirs.mp3', 'audio/mpeg', mp3(), other.id);
     const list = (await app.inject({ method: 'GET', url: `/api/rooms/${roomId}/files` })).json();

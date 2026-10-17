@@ -1,4 +1,5 @@
 import { expect, type APIRequestContext, type Page } from '@playwright/test';
+import { adminHeaders } from './admin';
 import { silentMp3 } from './mp3';
 
 const unique = () => `e2e-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -13,12 +14,14 @@ export const layerName = (track: Track) => track.originalName.replace(/\.mp3$/i,
 
 // A room with `count` uploaded tracks (real, silent mp3s so the browser can play them).
 export async function createRoomWithTracks(request: APIRequestContext, count: number, seconds = 30) {
-  const res = await request.post('/api/rooms', { data: { name: unique() } });
+  const headers = await adminHeaders(request);
+  const res = await request.post('/api/rooms', { headers, data: { name: unique() } });
   expect(res.status()).toBe(201);
   const room = (await res.json()) as { id: string; name: string };
   const tracks: Track[] = [];
   for (let i = 1; i <= count; i++) {
     const up = await request.post(`/api/rooms/${room.id}/files`, {
+      headers,
       multipart: { file: { name: `track-${i}.mp3`, mimeType: 'audio/mpeg', buffer: silentMp3(seconds) } },
     });
     expect(up.status()).toBe(201);

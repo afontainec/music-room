@@ -1,10 +1,11 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
+import { adminHeaders } from './admin';
 
 // The room page sends these heartbeats (soundscape.spec.ts); these cover the API directly.
 const unique = () => `e2e-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 async function createRoom(request: APIRequestContext): Promise<string> {
-  const res = await request.post('/api/rooms', { data: { name: unique() } });
+  const res = await request.post('/api/rooms', { headers: await adminHeaders(request), data: { name: unique() } });
   expect(res.status()).toBe(201);
   return (await res.json()).id;
 }

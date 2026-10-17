@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { adminHeaders } from './admin';
 import { silentMp3 } from './mp3';
 import { createRoomWithTracks } from './room';
 
@@ -8,13 +9,14 @@ interface ListedTrack {
   url: string;
 }
 
-// Admin auth is not built yet, so the listing is requested without credentials.
+// Adding tracks needs a staff session; the listing is public.
 test('A request for a room’s tracks returns every track of that room, with id, name and playable URL', async ({
   page,
   request,
 }) => {
   const room = await createRoomWithTracks(request, 2);
   const linked = await request.post(`/api/rooms/${room.id}/files/url`, {
+    headers: await adminHeaders(request),
     data: { url: 'https://example.com/sounds/wind.mp3' },
   });
   expect(linked.status()).toBe(201);
@@ -39,11 +41,16 @@ test('A request for a room’s tracks returns every track of that room, with id,
 
 test('Track names match the uploaded file name without the extension', async ({ request }) => {
   const room = await createRoomWithTracks(request, 0);
+  const headers = await adminHeaders(request);
   const up = await request.post(`/api/rooms/${room.id}/files`, {
+    headers,
     multipart: { file: { name: 'Forest Birds.mp3', mimeType: 'audio/mpeg', buffer: silentMp3(1) } },
   });
   expect(up.status()).toBe(201);
-  await request.post(`/api/rooms/${room.id}/files/url`, { data: { url: 'https://example.com/a/water-stream.mp3' } });
+  await request.post(`/api/rooms/${room.id}/files/url`, {
+    headers,
+    data: { url: 'https://example.com/a/water-stream.mp3' },
+  });
 
   const tracks = (await (await request.get(`/api/rooms/${room.id}/files`)).json()) as ListedTrack[];
   expect(tracks.map((t) => t.name).sort()).toEqual(['Forest Birds', 'water-stream']);
