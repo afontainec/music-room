@@ -169,6 +169,63 @@ paths:
                       $ref: '#/components/schemas/PresentDevice'
         '404':
           $ref: '#/components/responses/Error'
+  /api/rooms/{id}/layer:
+    post:
+      summary: Assign the device its soundscape layer
+      description: >-
+        Call when the device joins the room and again when its track ends. Returns the track
+        played by the fewest other present devices (ties broken at random), so every track is in
+        use once before any plays on two devices. Never returns the device's previous track
+        unless it is the room's only one. The assignment is recorded as the device's presence
+        heartbeat, with the returned track as its `trackId`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deviceId]
+              properties:
+                deviceId:
+                  type: string
+                  pattern: '^[A-Za-z0-9_-]{1,64}$'
+                previousTrackId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: >-
+                    The track that just ended. Defaults to the device's current track in presence.
+      responses:
+        '200':
+          description: The assigned layer, or `track` null with `reason` "no-tracks" for an empty room
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [track]
+                properties:
+                  track:
+                    nullable: true
+                    allOf:
+                      - $ref: '#/components/schemas/Layer'
+                  reason:
+                    type: string
+                    enum: [no-tracks]
+                    description: Present only when `track` is null
+                  message:
+                    type: string
+                    description: Present only when `track` is null
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
   /api/rooms/{id}/presence/{deviceId}:
     delete:
       summary: Leave the room (removes the device immediately)
@@ -374,3 +431,16 @@ components:
         lastSeen:
           type: integer
           description: Time of the last heartbeat, in milliseconds since the epoch
+    Layer:
+      type: object
+      required: [id, name, url]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: The track's file name without extension
+        url:
+          type: string
+          description: Playable path, `/api/files/{id}`

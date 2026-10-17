@@ -5,6 +5,7 @@ import fastifyStatic from '@fastify/static';
 import type { Db } from './db/client.js';
 import { fileRoutes } from './routes/files.js';
 import { helloRoutes } from './routes/hello.js';
+import { layerRoutes } from './routes/layers.js';
 import { Presence } from './presence.js';
 import { presenceRoutes } from './routes/presence.js';
 import { roomRoutes } from './routes/rooms.js';
@@ -32,6 +33,7 @@ export async function buildApp(deps?: AppDeps) {
     presence.start();
     app.addHook('onClose', async () => presence.stop());
     await app.register(presenceRoutes, { db: deps.db, presence });
+    await app.register(layerRoutes, { db: deps.db, presence });
   }
 
   // Single Railway service: serve the built SPA from the same Node process.
