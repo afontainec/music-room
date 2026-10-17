@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
 
-// Presence has no UI yet (layer assignment will consume it), so these drive the API directly.
+// The room page sends these heartbeats (soundscape.spec.ts); these cover the API directly.
 const unique = () => `e2e-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 async function createRoom(request: APIRequestContext): Promise<string> {

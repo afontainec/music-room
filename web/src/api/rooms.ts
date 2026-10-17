@@ -26,17 +26,47 @@ async function getJson<T>(url: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function postJson<T>(url: string, body: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (res.status === 404) throw new NotFoundError(url);
+  if (!res.ok) throw new Error(`POST ${url} failed with ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
 export const listRooms = () => getJson<Room[]>('/api/rooms');
 
 export const getRoom = (id: string) => getJson<RoomDetails>(`/api/rooms/${encodeURIComponent(id)}`);
 
-/** A random track of the room, never `after` (the one that just played) unless it is the only one. */
-export const getNextTrack = (roomId: string, after?: string | null) =>
-  getJson<{ track: RoomFile | null }>(
-    `/api/rooms/${encodeURIComponent(roomId)}/next-track${after ? `?after=${encodeURIComponent(after)}` : ''}`,
-  ).then((res) => res.track);
+/** A track as the server hands it to a device: its display name and a playable URL (uploads are
+ * streamed by the server, URL tracks redirect to their source). */
+export interface Layer {
+  id: string;
+  name: string;
+  url: string;
+}
 
-/** Uploads are streamed by the server; URL tracks redirect to their source. */
-export const trackUrl = (file: RoomFile) => `/api/files/${encodeURIComponent(file.id)}`;
+const roomPath = (roomId: string) => `/api/rooms/${encodeURIComponent(roomId)}`;
 
-export const trackTitle = (file: RoomFile) => file.originalName ?? file.fileRef;
+/** The layer this device should play next: the room's least-used track, never `previousTrackId`
+ * unless it is the only one. Null for a room without tracks. Also counts as a heartbeat. */
+export const requestLayer = (roomId: string, deviceId: string, previousTrackId: string | null) =>
+  postJson<{ track: Layer | null }>(`${roomPath(roomId)}/layer`, { deviceId, previousTrackId }).then(
+    (res) => res.track,
+  );
+
+/** Keeps the device present in the room, playing `trackId`. */
+export const sendHeartbeat = (roomId: string, deviceId: string, trackId: string | null) =>
+  postJson<unknown>(`${roomPath(roomId)}/presence/heartbeat`, { deviceId, trackId }).then(() => {});
+
+/** Frees the device's layer right away. `keepalive` lets the request outlive a closing page;
+ * failures are ignored, since the server drops the device 30 s after its last heartbeat anyway. */
+export function releaseLayer(roomId: string, deviceId: string) {
+  fetch(`${roomPath(roomId)}/presence/${encodeURIComponent(deviceId)}`, {
+    method: 'DELETE',
+    keepalive: true,
+  }).catch(() => {});
+}
