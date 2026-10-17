@@ -18,7 +18,15 @@ export default defineConfig({
   webServer: {
     command: 'npm run build && npm run db:migrate && npm run start',
     url: `http://localhost:${port}/api/hello`,
-    env: { PORT: String(port), DATABASE_URL: databaseUrl, STORAGE_DIR: 'test-results/uploads' },
+    // The staff account matches e2e/admin.ts.
+    env: {
+      PORT: String(port),
+      DATABASE_URL: databaseUrl,
+      STORAGE_DIR: 'test-results/uploads',
+      ADMIN_USERNAME: 'staff',
+      ADMIN_PASSWORD: 'e2e-staff-password',
+      AUTH_SECRET: 'e2e-auth-secret',
+    },
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

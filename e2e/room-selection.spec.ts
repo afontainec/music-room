@@ -1,9 +1,10 @@
 import { devices, expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { adminHeaders } from './admin';
 
 const unique = () => `e2e-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 async function createRoom(request: APIRequestContext, name = unique()) {
-  const res = await request.post('/api/rooms', { data: { name } });
+  const res = await request.post('/api/rooms', { headers: await adminHeaders(request), data: { name } });
   expect(res.status()).toBe(201);
   return (await res.json()) as { id: string; name: string };
 }
@@ -21,7 +22,10 @@ test('Page lists all existing rooms by name', async ({ page, request }) => {
 
 test("Clicking a room navigates the user to that room's page", async ({ page, request }) => {
   const room = await createRoom(request);
-  await request.post(`/api/rooms/${room.id}/files/url`, { data: { url: 'https://example.com/one.mp3' } });
+  await request.post(`/api/rooms/${room.id}/files/url`, {
+    headers: await adminHeaders(request),
+    data: { url: 'https://example.com/one.mp3' },
+  });
   await page.goto('/');
   await roomLink(page, room.name).click();
   await expect(page).toHaveURL(`/rooms/${room.id}`);

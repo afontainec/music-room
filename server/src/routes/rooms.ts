@@ -1,11 +1,13 @@
 import { asc, eq } from 'drizzle-orm';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, preHandlerHookHandler } from 'fastify';
 import type { Db } from '../db/client.js';
 import { roomFiles, rooms } from '../db/schema.js';
 import { pickNextTrack } from '../playback.js';
 
 export interface RoomRoutesOptions {
   db: Db;
+  /** Guards the admin routes (staff only); the read routes stay public. */
+  requireAdmin: preHandlerHookHandler;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -14,9 +16,9 @@ const MAX_NAME_LENGTH = 100;
 // Files are assigned to a room through the file routes: POST /api/rooms/:roomId/files (upload)
 // and POST /api/rooms/:roomId/files/url (external URL).
 export async function roomRoutes(app: FastifyInstance, opts: RoomRoutesOptions) {
-  const { db } = opts;
+  const { db, requireAdmin } = opts;
 
-  app.post<{ Body: { name?: unknown } }>('/api/rooms', async (req, reply) => {
+  app.post<{ Body: { name?: unknown } }>('/api/rooms', { preHandler: requireAdmin }, async (req, reply) => {
     const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
     if (!name) return reply.code(400).send({ error: 'Room name is required' });
     if (name.length > MAX_NAME_LENGTH) {

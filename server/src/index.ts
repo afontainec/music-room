@@ -1,18 +1,26 @@
 import { buildApp } from './app.js';
-import { maxUploadBytes, storageDir } from './config.js';
+import { Auth } from './auth.js';
+import { authOptions, maxUploadBytes, storageDir } from './config.js';
 import { createDb } from './db/client.js';
 import { LocalDiskStorage } from './storage/local.js';
 
 // The database is optional so the app still boots (hello page only) without one.
 const database = process.env.DATABASE_URL ? createDb(process.env.DATABASE_URL) : undefined;
+const auth = new Auth(authOptions());
 const app = await buildApp(
   database && {
     db: database.db,
     storage: new LocalDiskStorage(storageDir()),
     maxUploadBytes: maxUploadBytes(),
+    auth,
   },
 );
 const port = Number(process.env.PORT ?? 3000);
+
+if (database && !auth.enabled) app.log.warn('ADMIN_PASSWORD is not set: staff login is disabled');
+if (database && auth.enabled && !process.env.AUTH_SECRET) {
+  app.log.warn('AUTH_SECRET is not set: staff sessions end when the server restarts');
+}
 
 try {
   await app.listen({ port, host: '0.0.0.0' });

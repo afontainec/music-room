@@ -89,6 +89,49 @@ h1 {
   cursor: pointer;
 }
 
+.login-form {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 360px;
+}
+
+.login-form label {
+  display: grid;
+  gap: 0.25rem;
+  font-weight: 600;
+}
+
+.login-form input {
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #c7c7cc;
+  border-radius: 8px;
+  font: inherit;
+}
+
+.login-form button,
+.secondary-button {
+  min-height: 44px; /* comfortable touch target on mobile */
+  padding: 0.5rem 1.5rem;
+  border: none;
+  border-radius: 999px;
+  background: #0066cc;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondary-button {
+  background: #e5e5ea;
+  color: inherit;
+}
+
+.form-error {
+  margin: 0;
+  color: #c00;
+}
+
 @media (max-width: 480px) {
   .room-list {
     grid-template-columns: 1fr;

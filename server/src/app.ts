@@ -2,7 +2,9 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
+import type { Auth } from './auth.js';
 import type { Db } from './db/client.js';
+import { authRoutes } from './routes/auth.js';
 import { fileRoutes } from './routes/files.js';
 import { helloRoutes } from './routes/hello.js';
 import { layerRoutes } from './routes/layers.js';
@@ -17,6 +19,8 @@ export interface AppDeps {
   db: Db;
   storage: Storage;
   maxUploadBytes: number;
+  /** Staff login; guards the admin routes. */
+  auth: Auth;
   /** Injectable for tests (fake clock); defaults to a store with the 30 s TTL. */
   presence?: Presence;
 }
@@ -27,8 +31,10 @@ export async function buildApp(deps?: AppDeps) {
 
   await app.register(helloRoutes);
   if (deps) {
-    await app.register(roomRoutes, { db: deps.db });
-    await app.register(fileRoutes, deps);
+    const { requireAdmin } = deps.auth;
+    await app.register(authRoutes, { auth: deps.auth });
+    await app.register(roomRoutes, { db: deps.db, requireAdmin });
+    await app.register(fileRoutes, { ...deps, requireAdmin });
     const presence = deps.presence ?? new Presence();
     presence.start();
     app.addHook('onClose', async () => presence.stop());

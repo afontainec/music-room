@@ -2,8 +2,70 @@ openapi: 3.0.3
 info:
   title: Music Rooms API
   version: 0.1.0
-  description: Room admin API. Not behind authentication yet.
+  description: >-
+    Room API. Admin operations (marked with `staffToken` security) need a bearer token from
+    `POST /api/auth/login`; visitor routes are public.
 paths:
+  /api/auth/login:
+    post:
+      summary: Log in with the shared staff account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: A signed token, valid until `expiresAt` (`AUTH_TOKEN_TTL_SECONDS`, default 12 h). There is no refresh; log in again once it expires.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, expiresAt]
+                properties:
+                  token:
+                    type: string
+                  expiresAt:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '503':
+          description: Staff login is not configured (`ADMIN_PASSWORD` unset)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/auth/session:
+    get:
+      summary: The session of the given token
+      security:
+        - staffToken: []
+      responses:
+        '200':
+          description: Valid session
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [username, expiresAt]
+                properties:
+                  username:
+                    type: string
+                  expiresAt:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/rooms:
     get:
       summary: List all rooms
@@ -18,6 +80,8 @@ paths:
                   $ref: '#/components/schemas/Room'
     post:
       summary: Create a room
+      security:
+        - staffToken: []
       requestBody:
         required: true
         content:
@@ -39,6 +103,8 @@ paths:
                 $ref: '#/components/schemas/Room'
         '400':
           $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '409':
           $ref: '#/components/responses/Error'
   /api/rooms/{id}:
@@ -286,6 +352,8 @@ paths:
           $ref: '#/components/responses/Error'
     post:
       summary: Assign an uploaded mp3 to the room
+      security:
+        - staffToken: []
       requestBody:
         required: true
         content:
@@ -306,11 +374,15 @@ paths:
                 $ref: '#/components/schemas/RoomFile'
         '400':
           $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/Error'
   /api/rooms/{roomId}/files/url:
     post:
       summary: Assign an external mp3 URL to the room
+      security:
+        - staffToken: []
       parameters:
         - name: roomId
           in: path
@@ -339,6 +411,8 @@ paths:
                 $ref: '#/components/schemas/RoomFile'
         '400':
           $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/Error'
   /api/files/{id}:
@@ -361,17 +435,32 @@ paths:
         '404':
           $ref: '#/components/responses/Error'
 components:
+  securitySchemes:
+    staffToken:
+      type: http
+      scheme: bearer
+      description: Token from `POST /api/auth/login`
   responses:
     Error:
       description: Error
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              error:
-                type: string
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: >-
+        No valid staff token (`Authentication required`) or an expired one (`Session expired, log in
+        again`). Sent with `WWW-Authenticate: Bearer`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
   schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
     Room:
       type: object
       properties:

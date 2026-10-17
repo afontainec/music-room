@@ -1,3 +1,5 @@
+import type { AuthOptions } from './auth.js';
+
 export function databaseUrl(): string {
   const url = process.env.DATABASE_URL;
   if (!url) {
@@ -13,6 +15,22 @@ export function maxUploadBytes(): number {
   const n = Number(raw);
   if (!Number.isInteger(n) || n <= 0) throw new Error('MAX_UPLOAD_BYTES must be a positive integer');
   return n;
+}
+
+// The single shared staff account. Without ADMIN_PASSWORD staff login is off and every admin
+// route answers 401. Without AUTH_SECRET a random key is used, so sessions end on restart.
+export function authOptions(): AuthOptions {
+  const raw = process.env.AUTH_TOKEN_TTL_SECONDS;
+  const ttlSeconds = raw ? Number(raw) : 12 * 60 * 60;
+  if (!Number.isInteger(ttlSeconds) || ttlSeconds <= 0) {
+    throw new Error('AUTH_TOKEN_TTL_SECONDS must be a positive integer');
+  }
+  return {
+    username: process.env.ADMIN_USERNAME || 'staff',
+    password: process.env.ADMIN_PASSWORD || undefined,
+    secret: process.env.AUTH_SECRET || undefined,
+    ttlMs: ttlSeconds * 1000,
+  };
 }
 
 // Directory for uploaded mp3s: the Railway volume mount in production.
