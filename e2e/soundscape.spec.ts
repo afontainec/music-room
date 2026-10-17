@@ -191,7 +191,7 @@ test.describe('Playback continues with the screen locked or the tab in the backg
 
     await setVisibility(page, 'visible');
     expect(await playingTrackId(page), 'the same layer resumes').toBe(id);
-    await expect(page.getByRole('button', { name: 'Play' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Tap to listen' })).toHaveCount(0);
     await expect
       .poll(() => presentDevices(request, room.id))
       .toEqual([expect.objectContaining({ deviceId, trackId: id })]);
