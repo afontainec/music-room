@@ -18,7 +18,8 @@ interface Props {
 }
 
 // Tries to autoplay; browsers that block it (Safari and iOS especially) leave the track paused
-// behind a single Play button. play() runs directly in the click handler so the gesture counts.
+// behind a single "Tap to listen" button, which hides once the track plays. play() runs directly
+// in the click handler so the gesture counts; a native button also takes Enter and Space.
 // Following tracks reuse the same audio element, which the browser lets play once one has, and
 // which keeps playing with the screen locked or the tab hidden where the browser allows.
 export function AudioPlayer({ src, title, trackId, turn, album, onEnded }: Props) {
@@ -29,9 +30,16 @@ export function AudioPlayer({ src, title, trackId, turn, album, onEnded }: Props
   const wantsPlay = useRef(true);
   const fade = useRef<{ turn: number; timer?: number }>({ turn: -1 });
 
+  // A rejected play() (autoplay blocked, NotAllowedError) leaves the track paused behind the
+  // "Tap to listen" button. An AbortError only means a new src or a pause() interrupted this
+  // call; the new src gets its own play() and a pause reports itself, so showing the button
+  // then would be a false positive.
   const play = () => {
     wantsPlay.current = true;
-    audio.current?.play().catch(() => setStatus((s) => (s === 'error' ? s : 'paused')));
+    audio.current?.play().catch((err: unknown) => {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      setStatus((s) => (s === 'error' ? s : 'paused'));
+    });
   };
 
   useEffect(() => {
@@ -126,7 +134,7 @@ export function AudioPlayer({ src, title, trackId, turn, album, onEnded }: Props
       </p>
       {status === 'paused' && (
         <button type="button" className="play-button" onClick={play}>
-          Play
+          Tap to listen
         </button>
       )}
       {status === 'error' && (
