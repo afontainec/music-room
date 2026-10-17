@@ -8,6 +8,9 @@ export interface Track {
   originalName: string;
 }
 
+/** The name the room page shows for a track: its file name without the extension. */
+export const layerName = (track: Track) => track.originalName.replace(/\.mp3$/i, '');
+
 // A room with `count` uploaded tracks (real, silent mp3s so the browser can play them).
 export async function createRoomWithTracks(request: APIRequestContext, count: number, seconds = 30) {
   const res = await request.post('/api/rooms', { data: { name: unique() } });

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { audio, blockAutoplay, createRoomWithTracks, enterRoom, expectPlaying } from './room';
+import { audio, blockAutoplay, createRoomWithTracks, enterRoom, expectPlaying, layerName } from './room';
 
 // Short tracks so several play back to back within a test.
 const TRACK_SECONDS = 2;
@@ -66,7 +66,7 @@ test.describe('After a track finishes, a new random track auto-plays without use
     await expectPlaying(page);
     await expect(page.getByRole('button', { name: 'Play' })).toHaveCount(0);
     const current = room.tracks.find((t) => t.id === played.at(-1))!;
-    await expect(page.getByText(`Now playing: ${current.originalName}`)).toBeVisible();
+    await expect(page.getByText(`Now playing: ${layerName(current)}`)).toBeVisible();
   });
 
   test('one tap on Play is enough when autoplay is blocked', async ({ page, request }) => {

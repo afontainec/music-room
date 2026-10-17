@@ -1,7 +1,7 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
 import { createRoomWithTracks } from './room';
 
-// Layer assignment has no UI yet (the room page will call it), so these drive the API directly.
+// The room page plays what this endpoint assigns (soundscape.spec.ts); these cover its rules directly.
 interface Layer {
   id: string;
   name: string;
