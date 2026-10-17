@@ -1,27 +1,25 @@
 import { useEffect, useState } from 'react';
-import { clearToken, getSession, type Session } from '../api/auth';
-import { navigate } from '../router';
+import { clearToken } from '../api/auth';
+import { listRooms, type Room } from '../api/rooms';
+import { useStaffSession } from '../hooks/useStaffSession';
+import { Link, navigate } from '../router';
 
-type State = { status: 'loading' } | { status: 'error' } | { status: 'ready'; session: Session };
+type RoomsState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; rooms: Room[] };
 
-// The gate for the staff dashboard: without a valid session it sends the visitor to the login page.
-// The admin API checks the token on every call as well, so this is a convenience, not the guard.
 export function StaffArea() {
-  const [state, setState] = useState<State>({ status: 'loading' });
+  const session = useStaffSession();
+  const [rooms, setRooms] = useState<RoomsState>({ status: 'loading' });
 
   useEffect(() => {
+    if (session.status !== 'ready') return;
     let active = true;
-    getSession()
-      .then((session) => {
-        if (!active) return;
-        if (session) setState({ status: 'ready', session });
-        else navigate('/admin/login');
-      })
-      .catch(() => active && setState({ status: 'error' }));
+    listRooms()
+      .then((list) => active && setRooms({ status: 'ready', rooms: list }))
+      .catch(() => active && setRooms({ status: 'error' }));
     return () => {
       active = false;
     };
-  }, []);
+  }, [session.status]);
 
   const logOut = () => {
     clearToken();
@@ -31,17 +29,35 @@ export function StaffArea() {
   return (
     <main className="page">
       <h1>Staff area</h1>
-      {state.status === 'loading' && <p className="status">Checking your session…</p>}
-      {state.status === 'error' && (
+      {session.status === 'loading' && <p className="status">Checking your session…</p>}
+      {session.status === 'error' && (
         <p className="status" role="alert">
           Could not check your session. Please try again later.
         </p>
       )}
-      {state.status === 'ready' && (
+      {session.status === 'ready' && (
         <>
-          <p className="status">Signed in as {state.session.username}.</p>
-          <p className="status">Room and file management will appear here.</p>
-          <button type="button" className="secondary-button" onClick={logOut}>
+          <p className="status">Signed in as {session.session.username}.</p>
+          <h2>Rooms</h2>
+          {rooms.status === 'loading' && <p className="status">Loading rooms…</p>}
+          {rooms.status === 'error' && (
+            <p className="status" role="alert">
+              Could not load rooms. Please try again later.
+            </p>
+          )}
+          {rooms.status === 'ready' && rooms.rooms.length === 0 && <p className="status">No rooms yet.</p>}
+          {rooms.status === 'ready' && rooms.rooms.length > 0 && (
+            <ul className="room-list" aria-label="Rooms">
+              {rooms.rooms.map((room) => (
+                <li key={room.id}>
+                  <Link to={`/admin/rooms/${room.id}`} className="room-card">
+                    {room.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          <button type="button" className="secondary-button log-out" onClick={logOut}>
             Log out
           </button>
         </>
