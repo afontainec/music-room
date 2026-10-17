@@ -76,16 +76,18 @@ h1 {
 }
 
 .play-button {
-  min-width: 44px;
-  min-height: 44px; /* comfortable touch target on mobile */
-  margin-top: 0.75rem;
-  padding: 0.5rem 1.5rem;
+  display: block;
+  width: 100%;
+  min-height: 56px; /* prominent, and well above the 44px touch target on mobile */
+  margin-top: 1rem;
+  padding: 0.75rem 1.5rem;
   border: none;
   border-radius: 999px;
   background: #0066cc;
   color: #fff;
   font: inherit;
-  font-weight: 600;
+  font-size: 1.25rem;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -130,6 +132,13 @@ h1 {
 .form-error {
   margin: 0;
   color: #c00;
+.play-button:hover {
+  background: #0052a3;
+}
+
+.play-button:focus-visible {
+  outline: 3px solid #1d1d1f;
+  outline-offset: 3px;
 }
 
 @media (max-width: 480px) {

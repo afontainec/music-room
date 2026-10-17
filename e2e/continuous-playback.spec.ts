@@ -64,20 +64,20 @@ test.describe('After a track finishes, a new random track auto-plays without use
     const ids = room.tracks.map((t) => t.id);
     for (const id of played) expect(ids, 'every track belongs to the room').toContain(id);
     await expectPlaying(page);
-    await expect(page.getByRole('button', { name: 'Play' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Tap to listen' })).toHaveCount(0);
     const current = room.tracks.find((t) => t.id === played.at(-1))!;
     await expect(page.getByText(`Now playing: ${layerName(current)}`)).toBeVisible();
   });
 
-  test('one tap on Play is enough when autoplay is blocked', async ({ page, request }) => {
+  test('one tap on "Tap to listen" is enough when autoplay is blocked', async ({ page, request }) => {
     const room = await createRoomWithTracks(request, 3, TRACK_SECONDS);
     await blockAutoplay(page);
     await recordPlayback(page);
     await page.goto(`/rooms/${room.id}`);
-    await page.getByRole('button', { name: 'Play' }).click();
+    await page.getByRole('button', { name: 'Tap to listen' }).click();
     await waitForTracks(page, 3);
     await expectPlaying(page);
-    await expect(page.getByRole('button', { name: 'Play' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Tap to listen' })).toHaveCount(0);
   });
 });
 
