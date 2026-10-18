@@ -33,11 +33,11 @@ export async function buildApp(deps?: AppDeps) {
   if (deps) {
     const { requireAdmin } = deps.auth;
     await app.register(authRoutes, { auth: deps.auth });
-    await app.register(roomRoutes, { db: deps.db, requireAdmin });
-    await app.register(fileRoutes, { ...deps, requireAdmin });
     const presence = deps.presence ?? new Presence();
     presence.start();
     app.addHook('onClose', async () => presence.stop());
+    await app.register(roomRoutes, { db: deps.db, storage: deps.storage, presence, requireAdmin });
+    await app.register(fileRoutes, { ...deps, requireAdmin });
     await app.register(presenceRoutes, { db: deps.db, presence });
     await app.register(layerRoutes, { db: deps.db, presence });
   }
