@@ -434,6 +434,26 @@ paths:
           description: Redirect to the external URL
         '404':
           $ref: '#/components/responses/Error'
+    delete:
+      summary: Remove a track from its room
+      description: >-
+        Deletes the track and, for an upload, its stored file. External URLs are only unlinked.
+      security:
+        - staffToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Removed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/Error'
 components:
   securitySchemes:
     staffToken:

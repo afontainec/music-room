@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import fastifyMultipart from '@fastify/multipart';
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import type { FastifyInstance, preHandlerHookHandler } from 'fastify';
 import type { Db } from '../db/client.js';
 import { roomFiles, rooms } from '../db/schema.js';
@@ -51,7 +51,12 @@ export async function fileRoutes(app: FastifyInstance, opts: FileRoutesOptions) 
 
   app.get<{ Params: { roomId: string } }>('/api/rooms/:roomId/files', async (req, reply) => {
     if (!(await roomExists(req.params.roomId))) return reply.code(404).send({ error: 'Room not found' });
-    const files = await db.select().from(roomFiles).where(eq(roomFiles.roomId, req.params.roomId));
+    // Oldest first, so the staff list keeps its order as tracks are added.
+    const files = await db
+      .select()
+      .from(roomFiles)
+      .where(eq(roomFiles.roomId, req.params.roomId))
+      .orderBy(asc(roomFiles.createdAt), asc(roomFiles.id));
     // `url` is same-origin, so it plays both locally and behind Railway's proxy.
     return files.map((f) => ({ ...f, name: trackName(f), url: `/api/files/${f.id}` }));
   });
@@ -110,6 +115,16 @@ export async function fileRoutes(app: FastifyInstance, opts: FileRoutesOptions) 
       return reply.code(201).send(row);
     },
   );
+
+  // Removes a track from its room, and an upload's stored file with it. Devices playing it finish
+  // their current layer and are given another one when it ends.
+  app.delete<{ Params: { id: string } }>('/api/files/:id', { preHandler: requireAdmin }, async (req, reply) => {
+    if (!UUID.test(req.params.id)) return reply.code(404).send({ error: 'File not found' });
+    const [file] = await db.delete(roomFiles).where(eq(roomFiles.id, req.params.id)).returning();
+    if (!file) return reply.code(404).send({ error: 'File not found' });
+    if (file.source === 'upload') await storage.delete(file.fileRef);
+    return reply.code(204).send();
+  });
 
   // Playback: uploads are streamed with range support (seeking), external tracks are redirected.
   app.get<{ Params: { id: string } }>('/api/files/:id', async (req, reply) => {

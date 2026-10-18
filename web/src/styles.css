@@ -132,6 +132,96 @@ h1 {
 .form-error {
   margin: 0;
   color: #c00;
+}
+
+h2 {
+  margin: 1.5rem 0 0.75rem;
+  font-size: 1.25rem;
+}
+
+.log-out {
+  margin-top: 1.5rem;
+}
+
+.upload-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.upload-form label {
+  display: grid;
+  min-width: 0; /* lets the file input shrink on narrow phones */
+  max-width: 100%;
+  gap: 0.25rem;
+  font-weight: 600;
+}
+
+.upload-form input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.5rem 0;
+  font: inherit;
+}
+
+.upload-form button {
+  min-height: 44px; /* comfortable touch target on mobile */
+  padding: 0.5rem 1.5rem;
+  border: none;
+  border-radius: 999px;
+  background: #0066cc;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.upload-form button:disabled,
+.track-item button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.track-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
+}
+
+.track-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem 0.5rem 1.25rem;
+}
+
+.track-item + .track-item {
+  border-top: 1px solid #e5e5ea;
+}
+
+.track-name {
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.track-item .secondary-button {
+  flex-shrink: 0;
+}
+
+.empty-state {
+  padding: 1rem 1.25rem;
+  border: 1px dashed #c7c7cc;
+  border-radius: 12px;
+}
+
 .play-button:hover {
   background: #0052a3;
 }
