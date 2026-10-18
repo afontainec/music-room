@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { listTracks, removeTrack, SessionExpiredError, uploadTrack, type Track } from '../api/admin';
+import {
+  deleteRoom,
+  listTracks,
+  removeTrack,
+  renameRoom,
+  SessionExpiredError,
+  uploadTrack,
+  type Track,
+} from '../api/admin';
 import { getRoom, NotFoundError, type Room } from '../api/rooms';
 import { TrackList, type TracksState } from '../components/TrackList';
 import { useStaffSession } from '../hooks/useStaffSession';
@@ -7,11 +15,16 @@ import { Link, navigate } from '../router';
 
 type RoomState = { status: 'loading' } | { status: 'not-found' } | { status: 'error' } | { status: 'ready'; room: Room };
 
-// A room in the staff area: its tracks, an upload form and a remove button per track. The list is
-// fetched again after every upload or removal, so it always shows what visitors get.
+// A room in the staff area: rename and delete controls, its tracks, an upload form and a remove
+// button per track. The list is fetched again after every upload or removal, so it always shows
+// what visitors get.
 export function AdminRoomPage({ id }: { id: string }) {
   const session = useStaffSession();
   const [room, setRoom] = useState<RoomState>({ status: 'loading' });
+  const [nameDraft, setNameDraft] = useState('');
+  const [renaming, setRenaming] = useState(false);
+  const [roomError, setRoomError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [tracks, setTracks] = useState<TracksState>({ status: 'loading' });
   const [uploading, setUploading] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -36,7 +49,11 @@ export function AdminRoomPage({ id }: { id: string }) {
     if (!ready) return;
     let active = true;
     getRoom(id)
-      .then((r) => active && setRoom({ status: 'ready', room: r }))
+      .then((r) => {
+        if (!active) return;
+        setRoom({ status: 'ready', room: r });
+        setNameDraft(r.name);
+      })
       .catch((err) => active && setRoom({ status: err instanceof NotFoundError ? 'not-found' : 'error' }));
     loadTracks(true);
     return () => {
@@ -45,10 +62,43 @@ export function AdminRoomPage({ id }: { id: string }) {
     };
   }, [id, ready, loadTracks]);
 
-  // Shared handling for upload and removal failures: an expired session goes back to the login.
-  const failed = (err: unknown, fallback: string) => {
+  // Shared handling for failed actions: an expired session goes back to the login, anything else
+  // shows the server's message (rename and delete next to the room controls, the rest below upload).
+  const failed = (err: unknown, fallback: string, show = setActionError) => {
     if (err instanceof SessionExpiredError) return navigate('/admin/login');
-    setActionError(err instanceof Error && err.message ? err.message : fallback);
+    show(err instanceof Error && err.message ? err.message : fallback);
+  };
+
+  const onRename = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!nameDraft.trim()) return setRoomError('Enter a name for the room.');
+    setRenaming(true);
+    setRoomError(null);
+    try {
+      const renamed = await renameRoom(id, nameDraft);
+      setRoom({ status: 'ready', room: renamed });
+      setNameDraft(renamed.name);
+    } catch (err) {
+      if (err instanceof NotFoundError) return setRoom({ status: 'not-found' });
+      failed(err, 'Could not rename the room. Please try again.', setRoomError);
+    } finally {
+      setRenaming(false);
+    }
+  };
+
+  const onDelete = async (name: string) => {
+    if (!window.confirm(`Delete “${name}” and all its tracks? Visitors will no longer see it.`)) return;
+    setDeleting(true);
+    setRoomError(null);
+    try {
+      await deleteRoom(id);
+      navigate('/admin');
+    } catch (err) {
+      // Already deleted (in another tab): back to the list, which no longer shows it.
+      if (err instanceof NotFoundError) return navigate('/admin');
+      failed(err, 'Could not delete the room. Please try again.', setRoomError);
+      setDeleting(false);
+    }
   };
 
   const onUpload = async (e: FormEvent) => {
@@ -103,6 +153,29 @@ export function AdminRoomPage({ id }: { id: string }) {
       ) : room.status === 'ready' ? (
         <>
           <h1>{room.room.name}</h1>
+          <form className="inline-form" onSubmit={onRename}>
+            <label>
+              Room name
+              <input value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} maxLength={100} />
+            </label>
+            <button type="submit" disabled={renaming || nameDraft.trim() === room.room.name}>
+              {renaming ? 'Renaming…' : 'Rename'}
+            </button>
+            <button
+              type="button"
+              className="danger-button"
+              disabled={deleting}
+              onClick={() => onDelete(room.room.name)}
+            >
+              {deleting ? 'Deleting…' : 'Delete room'}
+            </button>
+          </form>
+          {roomError && (
+            <p className="form-error" role="alert">
+              {roomError}
+            </p>
+          )}
+          <h2>Tracks</h2>
           <form className="upload-form" onSubmit={onUpload}>
             <label>
               Mp3 file
@@ -117,7 +190,6 @@ export function AdminRoomPage({ id }: { id: string }) {
               {actionError}
             </p>
           )}
-          <h2>Tracks</h2>
           <TrackList state={tracks} onRetry={() => loadTracks(true)} onRemove={onRemove} removingId={removingId} />
         </>
       ) : null}
