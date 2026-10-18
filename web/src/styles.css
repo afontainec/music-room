@@ -143,7 +143,8 @@ h2 {
   margin-top: 1.5rem;
 }
 
-.upload-form {
+.upload-form,
+.inline-form {
   display: flex;
   flex-wrap: wrap;
   align-items: end;
@@ -151,7 +152,8 @@ h2 {
   margin-bottom: 0.75rem;
 }
 
-.upload-form label {
+.upload-form label,
+.inline-form label {
   display: grid;
   min-width: 0; /* lets the file input shrink on narrow phones */
   max-width: 100%;
@@ -167,7 +169,22 @@ h2 {
   font: inherit;
 }
 
-.upload-form button {
+.inline-form label {
+  flex: 1 1 220px;
+}
+
+.inline-form input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #c7c7cc;
+  border-radius: 8px;
+  font: inherit;
+}
+
+.upload-form button,
+.inline-form button {
   min-height: 44px; /* comfortable touch target on mobile */
   padding: 0.5rem 1.5rem;
   border: none;
@@ -180,6 +197,8 @@ h2 {
 }
 
 .upload-form button:disabled,
+.inline-form button:disabled,
+.danger-button:disabled,
 .track-item button:disabled {
   opacity: 0.6;
   cursor: default;
@@ -214,6 +233,19 @@ h2 {
 
 .track-item .secondary-button {
   flex-shrink: 0;
+}
+
+.danger-button,
+.inline-form .danger-button {
+  min-height: 44px; /* comfortable touch target on mobile */
+  padding: 0.5rem 1.5rem;
+  border: none;
+  border-radius: 999px;
+  background: #c00;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .empty-state {

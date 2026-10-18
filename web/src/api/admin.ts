@@ -1,5 +1,5 @@
 import { authHeaders, clearToken } from './auth';
-import { NotFoundError, type RoomFile } from './rooms';
+import { NotFoundError, type Room, type RoomFile } from './rooms';
 
 /** A room's track as the staff list shows it: its display name and a playable URL. */
 export interface Track extends RoomFile {
@@ -23,6 +23,27 @@ async function check(res: Response, what: string): Promise<Response> {
     throw new Error(body.error ?? `${what} failed with ${res.status}`);
   }
   return res;
+}
+
+async function sendJson(method: 'POST' | 'PATCH', url: string, body: unknown): Promise<Response> {
+  const headers = { ...authHeaders(), 'content-type': 'application/json' };
+  return check(await fetch(url, { method, headers, body: JSON.stringify(body) }), `${method} ${url}`);
+}
+
+/** Creates a room. Rejects with the server's message for an empty, too long or duplicate name. */
+export async function createRoom(name: string): Promise<Room> {
+  return (await sendJson('POST', '/api/rooms', { name })).json() as Promise<Room>;
+}
+
+/** Renames a room. Rejects with the server's message for an empty, too long or duplicate name. */
+export async function renameRoom(id: string, name: string): Promise<Room> {
+  return (await sendJson('PATCH', roomPath(id), { name })).json() as Promise<Room>;
+}
+
+/** Deletes a room with all its tracks. */
+export async function deleteRoom(id: string): Promise<void> {
+  const url = roomPath(id);
+  await check(await fetch(url, { method: 'DELETE', headers: authHeaders() }), `DELETE ${url}`);
 }
 
 /** Every track of the room, oldest first. */
