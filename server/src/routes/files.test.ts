@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
@@ -116,6 +116,28 @@ describe('file routes', () => {
     expect(served.statusCode).toBe(200);
     expect(served.headers['content-type']).toBe('audio/mpeg');
     expect(served.rawPayload.equals(data)).toBe(true);
+  });
+
+  it('removes a track and its stored file, for staff only', async () => {
+    const song = (await upload('song.mp3', 'audio/mpeg', mp3())).json();
+    const remove = (headers: Record<string, string>) =>
+      app.inject({ method: 'DELETE', url: `/api/files/${song.id}`, headers });
+    expect((await remove({})).statusCode).toBe(401);
+    expect((await app.inject({ method: 'GET', url: `/api/files/${song.id}` })).statusCode).toBe(200);
+
+    expect((await remove(admin)).statusCode).toBe(204);
+    expect((await app.inject({ method: 'GET', url: `/api/rooms/${roomId}/files` })).json()).toEqual([]);
+    expect((await app.inject({ method: 'GET', url: `/api/files/${song.id}` })).statusCode).toBe(404);
+    await expect(stat(path.join(dir, song.fileRef))).rejects.toThrow();
+    expect((await remove(admin)).statusCode).toBe(404);
+    expect((await app.inject({ method: 'DELETE', url: '/api/files/nope', headers: admin })).statusCode).toBe(404);
+  });
+
+  it('lists tracks oldest first', async () => {
+    const names = ['b.mp3', 'a.mp3', 'c.mp3'];
+    for (const name of names) await upload(name, 'audio/mpeg', mp3());
+    const list = (await app.inject({ method: 'GET', url: `/api/rooms/${roomId}/files` })).json();
+    expect(list.map((t: { originalName: string }) => t.originalName)).toEqual(names);
   });
 
   it('serves byte ranges', async () => {
