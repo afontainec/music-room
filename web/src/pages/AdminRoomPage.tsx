@@ -109,7 +109,8 @@ export function AdminRoomPage({ id }: { id: string }) {
     setActionError(null);
     try {
       await uploadTrack(id, file);
-      if (fileInput.current) fileInput.current.value = '';
+      // Clear the picker only if it still holds this file: staff may already have chosen the next one.
+      if (fileInput.current?.files?.[0] === file) fileInput.current.value = '';
     } catch (err) {
       failed(err, 'Could not upload the track. Please try again.');
     } finally {
