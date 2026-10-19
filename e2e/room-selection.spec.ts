@@ -13,15 +13,51 @@ const roomLink = (page: Page, name: string) => page.getByRole('link', { name, ex
 
 // The room list is staff only (see the anonymous visitor test), so the other tests start logged in.
 
-test('Anonymous visitors see no room list, only a pointer to their room link', async ({ page, request }) => {
+test('Non-staff visitor opening the room list URL sees a friendly message and no room names', async ({
+  page,
+  request,
+}) => {
   const room = await createRoom(request);
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Choose a room');
-  await expect(page.getByText('Open your room from the link you were given.', { exact: false })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ask for a room link');
+  await expect(page.getByText('Ask the staff here for the link to your room', { exact: false })).toBeVisible();
   await expect(page.getByRole('list', { name: 'Rooms' })).toHaveCount(0);
   await expect(page.getByText(room.name)).toHaveCount(0);
-  // A direct link to the room still works without a login.
+  expect(await page.content()).not.toContain(room.name);
+  // The only link is the staff login, none to a room.
+  await expect(page.getByRole('link')).toHaveText(['Log in']);
+});
+
+test('A visitor with an expired staff session also sees the friendly message', async ({ page, request }) => {
+  const room = await createRoom(request);
+  await page.addInitScript(() => localStorage.setItem('music-room.staffToken','not-a-valid-token'));
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ask for a room link');
+  await expect(page.getByText(room.name)).toHaveCount(0);
+});
+
+test('Public visitors see no navigation to other rooms while in a room', async ({ page, request }) => {
+  const room = await createRoom(request);
+  await request.post(`/api/rooms/${room.id}/files/url`, {
+    headers: await adminHeaders(request),
+    data: { url: 'https://example.com/one.mp3' },
+  });
   await page.goto(`/rooms/${room.id}`);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(room.name);
+  await expect(page.getByText('1 track', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link')).toHaveCount(0);
+  await expect(page.getByText('All rooms')).toHaveCount(0);
+});
+
+test('Opening a room URL directly as a visitor still works and refresh reopens the same room', async ({
+  page,
+  request,
+}) => {
+  const room = await createRoom(request);
+  await page.goto(`/rooms/${room.id}`);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(room.name);
+  await page.reload();
+  await expect(page).toHaveURL(`/rooms/${room.id}`);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(room.name);
 });
 
@@ -47,10 +83,10 @@ test("Clicking a room navigates the user to that room's page", async ({ page, re
   await expect(page).toHaveURL(`/rooms/${room.id}`);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(room.name);
   await expect(page.getByText('1 track', { exact: true })).toBeVisible();
-  // The room page also loads directly (server falls back to the SPA) and links back.
+  // The room page also loads directly (server falls back to the SPA); staff go back with the browser.
   await page.reload();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(room.name);
-  await page.getByRole('link', { name: 'All rooms' }).click();
+  await page.goBack();
   await expect(page).toHaveURL('/');
   await expect(roomLink(page, room.name)).toBeVisible();
 });

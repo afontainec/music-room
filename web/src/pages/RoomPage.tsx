@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { getRoom, NotFoundError, type RoomDetails } from '../api/rooms';
 import { AudioPlayer } from '../components/AudioPlayer';
 import { useSoundscapeLayer } from '../hooks/useSoundscapeLayer';
-import { Link } from '../router';
 
 type RoomState =
   | { status: 'loading' }
@@ -12,7 +11,8 @@ type RoomState =
 
 // Entering a room gives this device one layer of the soundscape, chosen by the server so the
 // devices in the room play different tracks. When it ends the device gets its next layer, for as
-// long as the visitor stays; the visitor sees the layer's name but does not choose it.
+// long as the visitor stays; the visitor sees the layer's name but does not choose it. The page
+// links to no other room: visitors stay in the room their link opened.
 export function RoomPage({ id }: { id: string }) {
   const [room, setRoom] = useState<RoomState>({ status: 'loading' });
   const { state: layer, next } = useSoundscapeLayer(id);
@@ -32,9 +32,6 @@ export function RoomPage({ id }: { id: string }) {
 
   return (
     <main className="page">
-      <Link to="/" className="back-link">
-        ← All rooms
-      </Link>
       {notFound ? (
         <h1>Room not found</h1>
       ) : room.status === 'error' ? (

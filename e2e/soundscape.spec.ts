@@ -156,7 +156,7 @@ test.describe('The page sends heartbeats while open and releases its layer when 
 
   test('leaving for the room list releases the layer', async ({ page, request }) => {
     const room = await openRoom(page, request);
-    await page.getByRole('link', { name: '← All rooms' }).click();
+    await page.goBack(); // an in-app navigation: the room page unmounts without a pagehide
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Choose a room');
     await expectReleased(request, room.id);
   });

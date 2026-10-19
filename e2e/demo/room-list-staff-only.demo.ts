@@ -9,7 +9,7 @@ test('The room list is for staff; visitors open their room from a link', async (
 
   await page.goto('/');
   await caption(page, 'A visitor without a login opens the home page: no room list is shown');
-  await expect(page.getByText('Open your room from the link you were given.', { exact: false })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ask for a room link');
   await expect(page.getByRole('list', { name: 'Rooms' })).toHaveCount(0);
 
   const anonymous = await page.request.get('/api/rooms');
