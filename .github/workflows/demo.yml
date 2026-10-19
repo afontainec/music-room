@@ -51,6 +51,9 @@ jobs:
           cache: npm
       - if: steps.changed.outputs.files != ''
         run: npm ci && npx playwright install --with-deps chromium
+      - name: Install ffmpeg
+        if: steps.changed.outputs.files != ''
+        run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends ffmpeg
       - name: Record the demos
         if: steps.changed.outputs.files != ''
         run: npm run demo -- ${{ steps.changed.outputs.files }}

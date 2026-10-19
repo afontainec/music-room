@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Turns the demo videos of the last `npm run demo` into an MP4 and a GIF each, pushes them to
 # the pr-media branch under pr-<number>/ and prints the pull request comment (Markdown).
-# Needs PR_NUMBER, HEAD_SHA, GH_TOKEN and GITHUB_REPOSITORY; ffmpeg comes with the runner.
+# Needs PR_NUMBER, HEAD_SHA, GH_TOKEN and GITHUB_REPOSITORY, and ffmpeg (installed by demo.yml).
 set -euo pipefail
 
 marker='<!-- pr-demo -->'
