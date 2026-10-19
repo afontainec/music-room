@@ -28,7 +28,7 @@ test('Staff build a forest soundscape and a visitor hears one of its layers', as
     await expect(page.getByRole('list', { name: 'Tracks' })).toContainText(layer);
   }
 
-  await caption(page, 'A visitor opens the public room list and picks the room');
+  await caption(page, 'The room is opened from the room list (staff only), as a visitor would from its link');
   await page.goto('/');
   await click(page, page.getByRole('link', { name: room, exact: true }));
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(room);

@@ -1,15 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { adminHeaders } from './admin';
+import { adminHeaders, asStaff } from './admin';
 import { silentMp3 } from './mp3';
 import { createRoomWithTracks, layerName } from './room';
-
-const TOKEN_KEY = 'music-room.staffToken';
-
-// Starts the page with a staff session, as if staff had logged in (auth.spec.ts covers the form).
-async function asStaff(page: Page, request: APIRequestContext) {
-  const token = (await adminHeaders(request)).authorization!.replace('Bearer ', '');
-  await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [TOKEN_KEY, token] as const);
-}
 
 // Opens the room from the staff area's room list, the way staff get there.
 async function openAdminRoom(page: Page, name: string) {

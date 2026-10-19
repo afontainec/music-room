@@ -30,6 +30,11 @@ async function sendJson(method: 'POST' | 'PATCH', url: string, body: unknown): P
   return check(await fetch(url, { method, headers, body: JSON.stringify(body) }), `${method} ${url}`);
 }
 
+/** Every room, ordered by name. The list is staff only. */
+export async function listAllRooms(): Promise<Room[]> {
+  return (await check(await fetch('/api/rooms', { headers: authHeaders() }), 'GET /api/rooms')).json() as Promise<Room[]>;
+}
+
 /** Creates a room. Rejects with the server's message for an empty, too long or duplicate name. */
 export async function createRoom(name: string): Promise<Room> {
   return (await sendJson('POST', '/api/rooms', { name })).json() as Promise<Room>;

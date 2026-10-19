@@ -12,7 +12,7 @@ export interface RoomRoutesOptions {
   storage: Storage;
   /** Deleting a room forgets the devices listening in it. */
   presence: Presence;
-  /** Guards the admin routes (staff only); the read routes stay public. */
+  /** Guards the admin routes and the room list (staff only); a single room's routes stay public. */
   requireAdmin: preHandlerHookHandler;
 }
 
@@ -101,7 +101,8 @@ export async function roomRoutes(app: FastifyInstance, opts: RoomRoutesOptions) 
     return reply.code(204).send();
   });
 
-  app.get('/api/rooms', async () => db.select().from(rooms).orderBy(asc(rooms.name)));
+  // The full list is for staff; visitors open a room by its id (a link they were given).
+  app.get('/api/rooms', { preHandler: requireAdmin }, async () => db.select().from(rooms).orderBy(asc(rooms.name)));
 
   app.get<{ Params: { id: string } }>('/api/rooms/:id', async (req, reply) => {
     if (!UUID.test(req.params.id)) return reply.code(404).send({ error: 'Room not found' });

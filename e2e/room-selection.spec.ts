@@ -1,5 +1,5 @@
 import { devices, expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { adminHeaders } from './admin';
+import { adminHeaders, asStaff } from './admin';
 
 const unique = () => `e2e-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
@@ -11,7 +11,22 @@ async function createRoom(request: APIRequestContext, name = unique()) {
 
 const roomLink = (page: Page, name: string) => page.getByRole('link', { name, exact: true });
 
+// The room list is staff only (see the anonymous visitor test), so the other tests start logged in.
+
+test('Anonymous visitors see no room list, only a pointer to their room link', async ({ page, request }) => {
+  const room = await createRoom(request);
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Choose a room');
+  await expect(page.getByText('Open your room from the link you were given.', { exact: false })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Rooms' })).toHaveCount(0);
+  await expect(page.getByText(room.name)).toHaveCount(0);
+  // A direct link to the room still works without a login.
+  await page.goto(`/rooms/${room.id}`);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(room.name);
+});
+
 test('Page lists all existing rooms by name', async ({ page, request }) => {
+  await asStaff(page);
   const first = await createRoom(request);
   const second = await createRoom(request);
   await page.goto('/');
@@ -21,6 +36,7 @@ test('Page lists all existing rooms by name', async ({ page, request }) => {
 });
 
 test("Clicking a room navigates the user to that room's page", async ({ page, request }) => {
+  await asStaff(page);
   const room = await createRoom(request);
   await request.post(`/api/rooms/${room.id}/files/url`, {
     headers: await adminHeaders(request),
@@ -40,6 +56,7 @@ test("Clicking a room navigates the user to that room's page", async ({ page, re
 });
 
 test('Page updates if rooms are added/removed (on reload)', async ({ page, request }) => {
+  await asStaff(page);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Choose a room');
   const room = await createRoom(request);
@@ -68,6 +85,7 @@ test('Shows an error when rooms cannot be loaded', async ({ page }) => {
 
 test.describe('Works on both desktop and mobile browsers', () => {
   test('desktop: rooms are laid out in a grid', async ({ page, request }) => {
+    await asStaff(page);
     await page.setViewportSize({ width: 1280, height: 800 });
     await createRoom(request);
     await createRoom(request);
@@ -82,6 +100,7 @@ test.describe('Works on both desktop and mobile browsers', () => {
     test.use(pixel5);
 
     test('mobile: rooms stack in one column and open on tap', async ({ page, request }) => {
+      await asStaff(page);
       const room = await createRoom(request);
       await page.goto('/');
       const link = roomLink(page, room.name);

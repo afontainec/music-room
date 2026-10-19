@@ -3,8 +3,8 @@ info:
   title: Music Rooms API
   version: 0.1.0
   description: >-
-    Room API. Admin operations (marked with `staffToken` security) need a bearer token from
-    `POST /api/auth/login`; visitor routes are public.
+    Room API. Admin operations and the room list (marked with `staffToken` security) need a
+    bearer token from `POST /api/auth/login`; visitor routes are public.
 paths:
   /api/auth/login:
     post:
@@ -68,7 +68,12 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/rooms:
     get:
-      summary: List all rooms
+      summary: List all rooms (staff only)
+      description: >-
+        The full room list is for staff. Visitors open a room by its id (`GET /api/rooms/{id}`),
+        which stays public.
+      security:
+        - staffToken: []
       responses:
         '200':
           description: Rooms ordered by name
@@ -78,6 +83,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Room'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
     post:
       summary: Create a room
       security:
