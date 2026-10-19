@@ -53,7 +53,7 @@ fi
 rm -rf "$media/pr-$PR_NUMBER" && mkdir -p "$media/pr-$PR_NUMBER"
 cp "$out"/*.mp4 "$out"/*.gif "$media/pr-$PR_NUMBER/"
 git -C "$media" add -A
-git -C "$media" commit -q -m "Demo for #$PR_NUMBER at ${HEAD_SHA:0:7}"
+git -C "$media" commit -q -m "Demo for PR $PR_NUMBER at ${HEAD_SHA:0:7}"
 # Two PRs can publish at once; their folders never overlap, so a rebase always applies.
 for attempt in 1 2 3; do
   git -C "$media" push -q origin pr-media && break
