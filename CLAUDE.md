@@ -118,6 +118,7 @@ Hosting consequences to design around:
 - **Storage behind an interface.** File access goes through one storage abstraction so local disk can be replaced by S3 without touching callers.
 - **Tracks have two sources**: uploaded file or external URL. Both validate file type and size; the size limit is not decided yet, so keep it configurable.
 - **Admin auth**: every admin action requires authentication. A single shared staff account is acceptable for now; visitor routes stay public.
+- **Visual style**: `docs/design/visual-style.md` is the agreed look (dark, Geist, one colour per room from a fixed palette), with mockups and their tokens in `docs/design/`. The current `web/src/styles.css` predates it; restyled screens follow the spec.
 - **Analytics need events from day one of playback**: room visits and track plays are recorded per room with timestamps so they can be queried by date range.
 
 ## MVP order
