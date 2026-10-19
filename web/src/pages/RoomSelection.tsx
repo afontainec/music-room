@@ -23,19 +23,36 @@ export function RoomSelection() {
     };
   }, []);
 
+  // Until the server answers it is unknown whether this is staff, so nothing room-related shows.
+  if (state.status === 'loading') {
+    return (
+      <main className="page">
+        <p className="status">Loading…</p>
+      </main>
+    );
+  }
+
+  // Visitors get a message in place of the list; nothing about the rooms reaches their page.
+  if (state.status === 'staff-only') {
+    return (
+      <main className="page">
+        <h1>Ask for a room link</h1>
+        <p className="status">
+          Each room has its own link. Ask the staff here for the link to your room and open it on this device.
+        </p>
+        <p className="status">
+          Staff? <Link to="/admin/login">Log in</Link> to see every room.
+        </p>
+      </main>
+    );
+  }
+
   return (
     <main className="page">
       <h1>Choose a room</h1>
-      {state.status === 'loading' && <p className="status">Loading rooms…</p>}
       {state.status === 'error' && (
         <p className="status" role="alert">
           Could not load rooms. Please try again later.
-        </p>
-      )}
-      {state.status === 'staff-only' && (
-        <p className="status">
-          Open your room from the link you were given. Staff can <Link to="/admin/login">log in</Link> to see every
-          room.
         </p>
       )}
       {state.status === 'ready' && state.rooms.length === 0 && <p className="status">No rooms yet.</p>}
