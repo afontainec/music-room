@@ -39,7 +39,7 @@ describe('room routes', () => {
     expect(missing.headers['www-authenticate']).toBe('Bearer');
     expect(missing.json()).toEqual({ error: 'Authentication required' });
     expect((await create('Chill', { authorization: 'Bearer nope' })).statusCode).toBe(401);
-    expect((await app.inject({ method: 'GET', url: '/api/rooms' })).json()).toEqual([]);
+    expect((await app.inject({ method: 'GET', url: '/api/rooms', headers: admin })).json()).toEqual([]);
   });
 
   it('creates a room', async () => {
@@ -62,11 +62,29 @@ describe('room routes', () => {
     expect((await create('x'.repeat(101))).statusCode).toBe(400);
   });
 
-  it('lists all rooms', async () => {
+  it('lists all rooms to staff', async () => {
     await create('B');
     await create('A');
-    const res = await app.inject({ method: 'GET', url: '/api/rooms' });
+    const res = await app.inject({ method: 'GET', url: '/api/rooms', headers: admin });
+    expect(res.statusCode).toBe(200);
     expect(res.json().map((r: { name: string }) => r.name)).toEqual(['A', 'B']);
+  });
+
+  it('answers an anonymous room list request with 401 and no room data', async () => {
+    await create('Forest');
+    for (const headers of [{}, { authorization: 'Bearer nope' }]) {
+      const res = await app.inject({ method: 'GET', url: '/api/rooms', headers });
+      expect(res.statusCode).toBe(401);
+      expect(res.headers['www-authenticate']).toBe('Bearer');
+      expect(res.json()).toEqual({ error: 'Authentication required' });
+    }
+  });
+
+  it('keeps a single room public', async () => {
+    const room = (await create('Forest')).json();
+    const res = await app.inject({ method: 'GET', url: `/api/rooms/${room.id}` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ id: room.id, name: 'Forest', files: [] });
   });
 
   it('returns room details with its file list after assigning a url', async () => {
@@ -202,7 +220,7 @@ describe('room routes', () => {
       expect(presence.present(room.id)).toEqual([]);
       expect(await db.select().from(schema.roomFiles)).toEqual([expect.objectContaining({ id: kept.id })]);
       expect(await storage.open(kept.fileRef)).not.toBeNull();
-      expect((await app.inject({ method: 'GET', url: '/api/rooms' })).json()).toEqual([
+      expect((await app.inject({ method: 'GET', url: '/api/rooms', headers: admin })).json()).toEqual([
         expect.objectContaining({ name: 'Sea' }),
       ]);
     });

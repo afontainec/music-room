@@ -52,9 +52,11 @@ test('Admin endpoints reject unauthenticated requests', async ({ request }) => {
   expect(await create.json()).toEqual({ error: 'Authentication required' });
   const forged = await request.post('/api/rooms', { headers: { authorization: 'Bearer forged.token' }, data: { name } });
   expect(forged.status()).toBe(401);
-  expect((await (await request.get('/api/rooms')).json()).map((r: { name: string }) => r.name)).not.toContain(name);
-
   const headers = await adminHeaders(request);
+  expect((await (await request.get('/api/rooms', { headers })).json()).map((r: { name: string }) => r.name)).not.toContain(
+    name,
+  );
+
   const room = await (await request.post('/api/rooms', { headers, data: { name } })).json();
   const upload = await request.post(`/api/rooms/${room.id}/files`, {
     multipart: { file: { name: 'song.mp3', mimeType: 'audio/mpeg', buffer: mp3 } },

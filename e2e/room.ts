@@ -1,5 +1,5 @@
 import { expect, type APIRequestContext, type Page } from '@playwright/test';
-import { adminHeaders } from './admin';
+import { adminHeaders, asStaff } from './admin';
 import { silentMp3 } from './mp3';
 
 const unique = () => `e2e-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -30,8 +30,10 @@ export async function createRoomWithTracks(request: APIRequestContext, count: nu
   return { ...room, tracks };
 }
 
-// Opening a room from the selection page is a click, which lets browsers autoplay.
+// Opening a room from the selection page is a click, which lets browsers autoplay. The room list
+// is staff only, so the page gets a staff session first.
 export async function enterRoom(page: Page, name: string) {
+  await asStaff(page);
   await page.goto('/');
   await page.getByRole('link', { name, exact: true }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(name);

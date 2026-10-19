@@ -128,7 +128,12 @@ describe('auth routes', () => {
     expect((await createRoom('anything')).statusCode).toBe(401);
   });
 
-  it('keeps visitor endpoints public', async () => {
-    expect((await app.inject({ method: 'GET', url: '/api/rooms' })).statusCode).toBe(200);
+  it('keeps visitor endpoints public and the room list for staff', async () => {
+    const { token } = (await login(ADMIN)).json();
+    const room = (await createRoom(token)).json();
+    expect((await app.inject({ method: 'GET', url: `/api/rooms/${room.id}` })).statusCode).toBe(200);
+    expect((await app.inject({ method: 'GET', url: '/api/rooms' })).statusCode).toBe(401);
+    const list = await app.inject({ method: 'GET', url: '/api/rooms', headers: { authorization: `Bearer ${token}` } });
+    expect(list.statusCode).toBe(200);
   });
 });

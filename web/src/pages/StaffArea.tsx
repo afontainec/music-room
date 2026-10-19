@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { createRoom, SessionExpiredError } from '../api/admin';
+import { createRoom, listAllRooms, SessionExpiredError } from '../api/admin';
 import { clearToken } from '../api/auth';
-import { listRooms, type Room } from '../api/rooms';
+import type { Room } from '../api/rooms';
 import { useStaffSession } from '../hooks/useStaffSession';
 import { Link, navigate } from '../router';
 
@@ -21,9 +21,13 @@ export function StaffArea() {
 
   const loadRooms = useCallback(() => {
     const request = ++latest.current;
-    listRooms()
+    listAllRooms()
       .then((list) => request === latest.current && setRooms({ status: 'ready', rooms: list }))
-      .catch(() => request === latest.current && setRooms({ status: 'error' }));
+      .catch((err) => {
+        if (request !== latest.current) return;
+        if (err instanceof SessionExpiredError) return navigate('/admin/login');
+        setRooms({ status: 'error' });
+      });
   }, []);
 
   useEffect(() => {

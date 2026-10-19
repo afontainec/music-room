@@ -26,12 +26,31 @@ test('Endpoint(s) assign uploaded/linked mp3 files to a room', async ({ request 
   expect(link.status()).toBe(201);
 });
 
-test('GET /rooms lists all rooms', async ({ request }) => {
+test('Authenticated staff request returns the full room list as today', async ({ request }) => {
+  const headers = await adminHeaders(request);
   const name = unique();
-  await request.post('/api/rooms', { headers: await adminHeaders(request), data: { name } });
-  const res = await request.get('/api/rooms');
+  await request.post('/api/rooms', { headers, data: { name } });
+  const res = await request.get('/api/rooms', { headers });
   expect(res.status()).toBe(200);
   expect((await res.json()).map((r: { name: string }) => r.name)).toContain(name);
+});
+
+test('Anonymous request to the room-list endpoint returns 401/403 with no room data', async ({ request }) => {
+  const name = unique();
+  await request.post('/api/rooms', { headers: await adminHeaders(request), data: { name } });
+  for (const headers of [{}, { authorization: 'Bearer forged.token' }]) {
+    const res = await request.get('/api/rooms', { headers });
+    expect(res.status()).toBe(401);
+    expect(await res.json()).toEqual({ error: 'Authentication required' });
+  }
+});
+
+test('GET of a single room by id remains public and unaffected', async ({ request }) => {
+  const name = unique();
+  const room = await (await request.post('/api/rooms', { headers: await adminHeaders(request), data: { name } })).json();
+  const res = await request.get(`/api/rooms/${room.id}`);
+  expect(res.status()).toBe(200);
+  expect(await res.json()).toMatchObject({ id: room.id, name, files: [] });
 });
 
 test('GET /rooms/:id returns room details and its file list', async ({ request }) => {
@@ -90,7 +109,9 @@ test('DELETE /api/rooms/:id removes the room, its files, their stored mp3s and i
   const res = await request.delete(`/api/rooms/${room.id}`, { headers });
   expect(res.status()).toBe(204);
   expect((await request.get(`/api/rooms/${room.id}`)).status()).toBe(404);
-  expect((await (await request.get('/api/rooms')).json()).map((r: { id: string }) => r.id)).not.toContain(room.id);
+  expect((await (await request.get('/api/rooms', { headers })).json()).map((r: { id: string }) => r.id)).not.toContain(
+    room.id,
+  );
   expect((await request.get(`/api/files/${upload.id}`)).status()).toBe(404);
   expect((await request.get(`/api/files/${link.id}`, { maxRedirects: 0 })).status()).toBe(404);
   expect((await request.get(`/api/rooms/${room.id}/presence`)).status()).toBe(404);

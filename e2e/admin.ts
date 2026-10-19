@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto';
-import { expect, type APIRequestContext } from '@playwright/test';
+import { expect, type APIRequestContext, type Page } from '@playwright/test';
 
 /** The staff account and token key playwright.config.ts gives the test server. */
 export const STAFF = { username: 'staff', password: 'e2e-staff-password' };
@@ -27,4 +27,12 @@ export function adminHeaders(request: APIRequestContext) {
     sessions.set(request, headers);
   }
   return headers;
+}
+
+const TOKEN_KEY = 'music-room.staffToken';
+
+/** Starts the page with a staff session, as if staff had logged in (auth.spec.ts covers the form). */
+export async function asStaff(page: Page, request: APIRequestContext = page.request) {
+  const token = (await adminHeaders(request)).authorization!.replace('Bearer ', '');
+  await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [TOKEN_KEY, token] as const);
 }
