@@ -63,5 +63,5 @@ jobs:
           .github/scripts/e2e-summary.sh > e2e-summary.md
           cat e2e-summary.md >> "$GITHUB_STEP_SUMMARY"
           if [ -n "$PR_NUMBER" ]; then
-            gh pr comment "$PR_NUMBER" --edit-last --create-if-none --body-file e2e-summary.md
+            .github/scripts/upsert-comment.sh "$PR_NUMBER" '<!-- e2e-summary -->' e2e-summary.md
           fi

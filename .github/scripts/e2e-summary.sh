@@ -5,6 +5,7 @@ set -euo pipefail
 
 results=test-results/results.json
 
+echo "<!-- e2e-summary -->"
 if [ "${OUTCOME:-}" = success ]; then
   echo "## ✅ E2E tests passed"
 else
@@ -24,7 +25,7 @@ else
 fi
 
 if [ -n "${ARTIFACT_URL:-}" ]; then
-  echo "**Recording:** [download the Playwright report]($ARTIFACT_URL), unzip it and run \`npx playwright show-report <folder>\`. Each test has a video and a step-by-step trace."
+  echo "**Recording:** [download the Playwright report]($ARTIFACT_URL), unzip it and run \`npx playwright show-report <folder>\`. Failed tests include a video and a step-by-step trace; the walkthrough of this PR is in the Demo comment."
   echo
 fi
 echo "[Workflow run](${RUN_URL:-})"

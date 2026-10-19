@@ -1,0 +1,65 @@
+name: Demo
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  demo:
+    # Fork PRs get a read-only token and cannot publish media.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # pushes the videos to the pr-media branch
+      pull-requests: write
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: music_room
+          POSTGRES_PASSWORD: music_room
+          POSTGRES_DB: music_room
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U music_room"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: changed
+        name: Find the demos this PR adds or changes
+        run: |
+          files=$(git diff --name-only --diff-filter=AM "origin/${{ github.base_ref }}...HEAD" -- 'e2e/demo/*.demo.ts' | tr '\n' ' ')
+          echo "files=$files" >> "$GITHUB_OUTPUT"
+      - name: Note that there is no demo
+        if: steps.changed.outputs.files == ''
+        run: |
+          printf '%s\n' '<!-- pr-demo -->' '## 🎬 No demo' '' 'This PR adds or changes no `e2e/demo/*.demo.ts`. See CLAUDE.md, "PR demos".' > demo.md
+          .github/scripts/upsert-comment.sh "$PR_NUMBER" '<!-- pr-demo -->' demo.md
+      - uses: actions/setup-node@v4
+        if: steps.changed.outputs.files != ''
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - if: steps.changed.outputs.files != ''
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: Install ffmpeg
+        if: steps.changed.outputs.files != ''
+        run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends ffmpeg
+      - name: Record the demos
+        if: steps.changed.outputs.files != ''
+        run: npm run demo -- ${{ steps.changed.outputs.files }}
+      - name: Publish and comment
+        if: steps.changed.outputs.files != ''
+        run: |
+          .github/scripts/publish-demo.sh > demo.md
+          cat demo.md >> "$GITHUB_STEP_SUMMARY"
+          .github/scripts/upsert-comment.sh "$PR_NUMBER" '<!-- pr-demo -->' demo.md

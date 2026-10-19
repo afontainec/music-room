@@ -15,6 +15,7 @@ Node 22 (`.nvmrc`). Run from the repo root:
 - `npm run build` — build `web/` then `server/`
 - `npm start` — run the built server, which also serves `web/dist` (one service in production)
 - `npm test` — Vitest (server); a single file: `npm test -w server -- src/routes/hello.test.ts`
+- `npm run demo` — record the walkthroughs in `e2e/demo/` (see PR demos below); `npm run demo -- e2e/demo/x.demo.ts` for one
 - `npm run test:e2e` — Playwright; builds and boots the server on port 3100 itself (first time: `npx playwright install chromium`)
 - `docker compose up -d` — local Postgres; copy `.env.example` to `.env` for its `DATABASE_URL`
 - `npm run db:migrate` / `npm run db:rollback` — apply all pending migrations / roll back the latest (`-- 2` for two)
@@ -53,16 +54,25 @@ CI (`.github/workflows/ci.yml`) runs build, Vitest, the migrations (up, down, up
 - `components/AudioPlayer.tsx` reuses one audio element for every layer, tries to autoplay and shows one prominent "Tap to listen" button (native `<button>`, so Enter/Space work; `:focus-visible` outline) when `play()` is rejected, hiding it once the layer plays. An `AbortError` from `play()` (a new src or a pause interrupted it) does not show the button, to avoid false positives. Each layer starts at volume 0 and fades in linearly over `FADE_IN_MS` (3 s) from its `playing` event, time-based so throttled background timers still finish on time (iOS ignores `volume`). On returning to view it resumes a track the OS paused, but not one the visitor paused from the lock screen (Media Session `pause` handler); it also sets Media Session metadata (layer name, room name).
 - Headless Chromium blocks autoplay on a direct page load but allows it after the click from the selection page; e2e tests use both paths, with silent mp3s from `e2e/mp3.ts` and shared helpers in `e2e/room.ts`. Headless pages never become hidden, so `e2e/soundscape.spec.ts` overrides `document.visibilityState` and fires `visibilitychange` to cover backgrounding; it checks fades through logged `volumechange` events and uses two browser contexts for two devices.
 
-## E2E recordings
+## E2E tests
 
-Playwright records a video and a trace of every test (`playwright.config.ts`). CI uploads the HTML report as the `playwright-report` artifact and posts a summary with the link on the pull request; view a report with `npx playwright show-report <folder>`.
+Playwright keeps a video and a trace only for failed tests (`playwright.config.ts`). CI uploads the HTML report as the `playwright-report` artifact and posts a pass/fail summary on the pull request.
 
-This recording is how a change is shown to work, so every pull request that changes behaviour must:
+Every pull request that changes behaviour must:
 
 - Add or update a Playwright test in `e2e/` for each acceptance criterion of the issue, named after the criterion so the summary reads as a checklist.
-- Drive the real UI through `page` wherever the criterion is user-visible; API-only tests produce no video.
-- Assert playback through state (the audio element is playing, which track, what position). The video has no sound.
+- Assert playback through state (the audio element is playing, which track, what position). Recordings have no sound.
 - Run `npm run test:e2e` and get it passing before opening the pull request.
+
+## PR demos
+
+Each behaviour-changing pull request also includes a screencast: a demo script in `e2e/demo/<feature>.demo.ts` that walks through the feature in the real UI, the way a person would show it on their local server. The Demo workflow (`.github/workflows/demo.yml`) records only the demos the pull request adds or changes, converts them to an MP4 and a GIF, stores them on the `pr-media` branch and posts one comment with the GIF inline. `soundscape-setup.demo.ts` is the reference example.
+
+- Import `test`, `caption`, `click` and `typeInto` from `e2e/demo/screencast.ts`: they draw a visible cursor, glide to each element and type at reading speed. Use plain Playwright calls only for steps viewers need not watch (setting up data, uploads).
+- Show the main flow of the issue in under 60 seconds, with a `caption` before each step saying what is happening in plain words.
+- Use one `page` per demo: each page is a separate video. To show a second device, call the API from the same test and caption the result.
+- End on the outcome, and assert it with `expect` so the demo fails if the feature does not work.
+- Run `npm run demo -- e2e/demo/<feature>.demo.ts` before opening the pull request.
 
 ## Pull requests from issues
 

@@ -13,8 +13,23 @@ export default defineConfig({
     ['html', { open: 'never' }],
     ['json', { outputFile: 'test-results/results.json' }],
   ],
-  // Every test is recorded: the HTML report embeds a video and a trace per test.
-  use: { baseURL: `http://localhost:${port}`, video: 'on', trace: 'on' },
+  // Tests keep a video and trace only when they fail; the screencast of a PR is its demo (e2e/demo).
+  use: { baseURL: `http://localhost:${port}`, video: 'retain-on-failure', trace: 'retain-on-failure' },
+  projects: [
+    { name: 'tests', testIgnore: '**/demo/**' },
+    {
+      // `npm run demo`: scripted walkthroughs recorded at 720p for the pull request comment.
+      name: 'demo',
+      testDir: 'e2e/demo',
+      testMatch: '**/*.demo.ts',
+      retries: 0,
+      use: {
+        viewport: { width: 1280, height: 720 },
+        video: { mode: 'on', size: { width: 1280, height: 720 } },
+        trace: 'off',
+      },
+    },
+  ],
   webServer: {
     command: 'npm run build && npm run db:migrate && npm run start',
     url: `http://localhost:${port}/api/hello`,
