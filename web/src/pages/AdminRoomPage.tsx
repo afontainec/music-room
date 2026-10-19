@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import {
+  addTrackByUrl,
   deleteRoom,
   listTracks,
   removeTrack,
@@ -15,9 +16,15 @@ import { Link, navigate } from '../router';
 
 type RoomState = { status: 'loading' } | { status: 'not-found' } | { status: 'error' } | { status: 'ready'; room: Room };
 
-// A room in the staff area: rename and delete controls, its tracks, an upload form and a remove
-// button per track. The list is fetched again after every upload or removal, so it always shows
-// what visitors get.
+type AddMode = 'upload' | 'url';
+const ADD_MODES: [AddMode, string][] = [
+  ['upload', 'Upload file'],
+  ['url', 'Add by URL'],
+];
+
+// A room in the staff area: rename and delete controls, its tracks, a form to upload an mp3 or add
+// one by URL, and a remove button per track. The list is fetched again after every addition or
+// removal, so it always shows what visitors get.
 export function AdminRoomPage({ id }: { id: string }) {
   const session = useStaffSession();
   const [room, setRoom] = useState<RoomState>({ status: 'loading' });
@@ -29,6 +36,10 @@ export function AdminRoomPage({ id }: { id: string }) {
   const [uploading, setUploading] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [addMode, setAddMode] = useState<AddMode>('upload');
+  const [urlDraft, setUrlDraft] = useState('');
+  const [addingUrl, setAddingUrl] = useState(false);
+  const [added, setAdded] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   // Only the latest request may update the list, so a slow earlier one cannot overwrite it.
   const latest = useRef(0);
@@ -107,6 +118,7 @@ export function AdminRoomPage({ id }: { id: string }) {
     if (!file) return setActionError('Choose an mp3 file to upload.');
     setUploading(true);
     setActionError(null);
+    setAdded(null);
     try {
       await uploadTrack(id, file);
       // Clear the picker only if it still holds this file: staff may already have chosen the next one.
@@ -119,10 +131,38 @@ export function AdminRoomPage({ id }: { id: string }) {
     }
   };
 
+  const onAddUrl = async (e: FormEvent) => {
+    e.preventDefault();
+    const url = urlDraft.trim();
+    if (!url || addingUrl) return;
+    setAddingUrl(true);
+    setActionError(null);
+    setAdded(null);
+    try {
+      await addTrackByUrl(id, url);
+      // Clear the field only if it still holds this URL: staff may already be typing the next one.
+      setUrlDraft((draft) => (draft.trim() === url ? '' : draft));
+      setAdded('Track added from the URL.');
+    } catch (err) {
+      if (err instanceof NotFoundError) return setRoom({ status: 'not-found' });
+      failed(err, 'Could not add the track. Please try again.');
+    } finally {
+      setAddingUrl(false);
+      loadTracks(false);
+    }
+  };
+
+  const chooseAddMode = (mode: AddMode) => {
+    setAddMode(mode);
+    setActionError(null);
+    setAdded(null);
+  };
+
   const onRemove = async (track: Track) => {
     if (!window.confirm(`Remove “${track.name}” from this room?`)) return;
     setRemovingId(track.id);
     setActionError(null);
+    setAdded(null);
     try {
       await removeTrack(track.id);
     } catch (err) {
@@ -177,18 +217,57 @@ export function AdminRoomPage({ id }: { id: string }) {
             </p>
           )}
           <h2>Tracks</h2>
-          <form className="upload-form" onSubmit={onUpload}>
-            <label>
-              Mp3 file
-              <input ref={fileInput} type="file" name="file" accept=".mp3,audio/mpeg" />
-            </label>
-            <button type="submit" disabled={uploading}>
-              {uploading ? 'Uploading…' : 'Upload'}
-            </button>
-          </form>
+          <fieldset className="add-mode">
+            <legend>Add a track</legend>
+            {ADD_MODES.map(([mode, label]) => (
+              <label key={mode}>
+                <input
+                  type="radio"
+                  name="add-mode"
+                  value={mode}
+                  checked={addMode === mode}
+                  onChange={() => chooseAddMode(mode)}
+                />
+                {label}
+              </label>
+            ))}
+          </fieldset>
+          {addMode === 'upload' ? (
+            <form className="upload-form" onSubmit={onUpload}>
+              <label>
+                Mp3 file
+                <input ref={fileInput} type="file" name="file" accept=".mp3,audio/mpeg" />
+              </label>
+              <button type="submit" disabled={uploading}>
+                {uploading ? 'Uploading…' : 'Upload'}
+              </button>
+            </form>
+          ) : (
+            // noValidate: the server checks the URL, so staff see its reason rather than the browser's.
+            <form className="inline-form" onSubmit={onAddUrl} noValidate>
+              <label>
+                Mp3 URL
+                <input
+                  type="url"
+                  inputMode="url"
+                  placeholder="https://example.com/birds.mp3"
+                  value={urlDraft}
+                  onChange={(e) => setUrlDraft(e.target.value)}
+                />
+              </label>
+              <button type="submit" disabled={addingUrl || !urlDraft.trim()}>
+                {addingUrl ? 'Adding…' : 'Add track'}
+              </button>
+            </form>
+          )}
           {actionError && (
             <p className="form-error" role="alert">
               {actionError}
+            </p>
+          )}
+          {added && (
+            <p className="form-success" role="status">
+              {added}
             </p>
           )}
           <TrackList state={tracks} onRetry={() => loadTracks(true)} onRemove={onRemove} removingId={removingId} />

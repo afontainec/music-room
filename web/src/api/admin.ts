@@ -65,6 +65,11 @@ export async function uploadTrack(roomId: string, file: File): Promise<void> {
   await check(await fetch(url, { method: 'POST', headers: authHeaders(), body }), `POST ${url}`);
 }
 
+/** Adds an externally hosted mp3 to the room by its URL. Rejects with the server's message when the URL is not accepted. */
+export async function addTrackByUrl(roomId: string, url: string): Promise<void> {
+  await sendJson('POST', `${roomPath(roomId)}/files/url`, { url });
+}
+
 export async function removeTrack(id: string): Promise<void> {
   const url = `/api/files/${encodeURIComponent(id)}`;
   await check(await fetch(url, { method: 'DELETE', headers: authHeaders() }), `DELETE ${url}`);
