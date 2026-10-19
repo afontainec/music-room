@@ -8,7 +8,6 @@ marker='<!-- pr-demo -->'
 results=test-results/results.json
 out=$(mktemp -d)
 raw="https://raw.githubusercontent.com/$GITHUB_REPOSITORY/pr-media/pr-$PR_NUMBER"
-blob="https://github.com/$GITHUB_REPOSITORY/blob/pr-media/pr-$PR_NUMBER"
 
 # One line per demo: title, then the path of its video.
 jq -r '.. | objects | select(has("tests") and has("title")) | . as $spec
@@ -32,7 +31,8 @@ while IFS=$'\t' read -r title video; do
     echo
     echo "![$title]($raw/$slug.gif?v=$HEAD_SHA)"
     echo
-    echo "[Watch the full-quality MP4]($blob/$slug.mp4)"
+    # GitHub serves repo files as downloads; jsDelivr serves them as video/mp4, so the link plays.
+    echo "[Watch the full-quality MP4](https://cdn.jsdelivr.net/gh/$GITHUB_REPOSITORY@MEDIA_SHA/pr-$PR_NUMBER/$slug.mp4)"
     echo
   } >> "$body"
 done < "$out/videos.tsv"
@@ -60,4 +60,6 @@ for attempt in 1 2 3; do
   git -C "$media" fetch -q --depth 1 origin pr-media && git -C "$media" rebase -q FETCH_HEAD
 done
 
+# Pin the MP4 links to the commit just pushed, so a link never shows an older recording.
+sed -i "s/MEDIA_SHA/$(git -C "$media" rev-parse HEAD)/g" "$body"
 cat "$body"
