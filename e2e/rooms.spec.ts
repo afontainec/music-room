@@ -36,6 +36,37 @@ test('Authenticated staff request returns the full room list as today', async ({
   expect((await res.json()).map((r: { name: string }) => r.name)).toContain(name);
 });
 
+test("GET /api/rooms returns each room's track count", async ({ request }) => {
+  const headers = await adminHeaders(request);
+  const empty = await (await request.post('/api/rooms', { headers, data: { name: unique() } })).json();
+  const room = await (await request.post('/api/rooms', { headers, data: { name: unique() } })).json();
+  for (const n of ['a', 'b']) {
+    await request.post(`/api/rooms/${room.id}/files/url`, { headers, data: { url: `https://example.com/${n}.mp3` } });
+  }
+  const list = await (await request.get('/api/rooms', { headers })).json();
+  const count = (id: string) => list.find((r: { id: string }) => r.id === id).trackCount;
+  expect(count(empty.id)).toBe(0);
+  expect(count(room.id)).toBe(2);
+});
+
+test('The count updates right after a track is uploaded or removed', async ({ request }) => {
+  const headers = await adminHeaders(request);
+  const room = await (await request.post('/api/rooms', { headers, data: { name: unique() } })).json();
+  const count = async () =>
+    (await (await request.get('/api/rooms', { headers })).json()).find((r: { id: string }) => r.id === room.id)
+      .trackCount;
+  expect(await count()).toBe(0);
+  const upload = await (
+    await request.post(`/api/rooms/${room.id}/files`, {
+      headers,
+      multipart: { file: { name: 'birds.mp3', mimeType: 'audio/mpeg', buffer: mp3 } },
+    })
+  ).json();
+  expect(await count()).toBe(1);
+  expect((await request.delete(`/api/files/${upload.id}`, { headers })).status()).toBe(204);
+  expect(await count()).toBe(0);
+});
+
 test('Anonymous request to the room-list endpoint returns 401/403 with no room data', async ({ request }) => {
   const name = unique();
   await request.post('/api/rooms', { headers: await adminHeaders(request), data: { name } });

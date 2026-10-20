@@ -1,4 +1,4 @@
-import { asc, eq, sql } from 'drizzle-orm';
+import { asc, count, eq, getTableColumns, sql } from 'drizzle-orm';
 import type { FastifyInstance, preHandlerHookHandler } from 'fastify';
 import type { Db } from '../db/client.js';
 import { type Room, roomFiles, rooms } from '../db/schema.js';
@@ -29,7 +29,7 @@ function parseName(value: unknown): { name: string } | { error: string } {
 }
 
 /** The room as the API returns it: `colour` is always a palette colour, derived from the id when none is stored. */
-const withColour = (room: Room) => ({ ...room, colour: roomColour(room) });
+const withColour = <R extends Room>(room: R) => ({ ...room, colour: roomColour(room) });
 
 const duplicateName = (name: string) => ({ error: `A room named "${name}" already exists` });
 
@@ -131,8 +131,16 @@ export async function roomRoutes(app: FastifyInstance, opts: RoomRoutesOptions) 
   });
 
   // The full list is for staff; visitors open a room by its id (a link they were given).
+  // `trackCount` is counted on every request, so it follows uploads and removals at once.
   app.get('/api/rooms', { preHandler: requireAdmin }, async () =>
-    (await db.select().from(rooms).orderBy(asc(rooms.name))).map(withColour),
+    (
+      await db
+        .select({ ...getTableColumns(rooms), trackCount: count(roomFiles.id) })
+        .from(rooms)
+        .leftJoin(roomFiles, eq(roomFiles.roomId, rooms.id))
+        .groupBy(rooms.id)
+        .orderBy(asc(rooms.name))
+    ).map(withColour),
   );
 
   app.get<{ Params: { id: string } }>('/api/rooms/:id', async (req, reply) => {
