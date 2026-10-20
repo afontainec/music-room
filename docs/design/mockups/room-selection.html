@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup: choose a room</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  .page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 64px 20px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+  .brand {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 4px;
+  }
+  .brand-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .intro {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0 4px;
+  }
+  h1 {
+    margin: 0;
+    font-size: 36px;
+    font-weight: 300;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+  }
+  .intro p {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--text-muted);
+  }
+  .rooms {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .room-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 164px;
+    padding: 18px;
+    border-radius: var(--radius-card);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: inherit;
+    text-decoration: none;
+  }
+  .room-card:hover {
+    border-color: var(--border-strong);
+  }
+  .room-card:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+  }
+  .room-orb {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--room-color);
+    box-shadow: 0 0 24px var(--room-color);
+  }
+  .room-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .room-name {
+    font-size: 19px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
+  }
+  .room-layers {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="brand">
+    <span class="label">Music Rooms</span>
+    <span class="brand-dot" aria-hidden="true"></span>
+  </div>
+  <div class="intro">
+    <h1>Where are you?</h1>
+    <p>Pick the room you are in. Your phone joins its soundscape.</p>
+  </div>
+  <ul class="rooms" aria-label="Rooms">
+    <li><a class="room-card" href="room.html" style="--room-color: var(--room-moss)">
+      <span class="room-orb" aria-hidden="true"></span>
+      <span class="room-meta"><span class="room-name">Forest</span><span class="room-layers">5 layers</span></span>
+    </a></li>
+    <li><a class="room-card" href="room.html" style="--room-color: var(--room-sky)">
+      <span class="room-orb" aria-hidden="true"></span>
+      <span class="room-meta"><span class="room-name">Ocean</span><span class="room-layers">4 layers</span></span>
+    </a></li>
+    <li><a class="room-card" href="room.html" style="--room-color: var(--room-lavender)">
+      <span class="room-orb" aria-hidden="true"></span>
+      <span class="room-meta"><span class="room-name">Night rain</span><span class="room-layers">6 layers</span></span>
+    </a></li>
+    <li><a class="room-card" href="room.html" style="--room-color: var(--room-sand)">
+      <span class="room-orb" aria-hidden="true"></span>
+      <span class="room-meta"><span class="room-name">Desert wind</span><span class="room-layers">1 layer</span></span>
+    </a></li>
+  </ul>
+</main>
+</body>
+</html>
