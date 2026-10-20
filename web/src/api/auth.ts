@@ -6,8 +6,27 @@ export interface Session {
 // The staff token lives in localStorage so a login survives reloads and new tabs until it expires.
 const TOKEN_KEY = 'music-room.staffToken';
 
+// Fired in this tab when the token is stored or cleared; other tabs get the browser's `storage` event.
+const TOKEN_CHANGE_EVENT = 'music-room:staff-token';
+
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
-export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
+export function clearToken() {
+  localStorage.removeItem(TOKEN_KEY);
+  window.dispatchEvent(new Event(TOKEN_CHANGE_EVENT));
+}
+
+/** Calls `listener` whenever the staff token is stored or cleared, in this tab or another. */
+export function onTokenChange(listener: () => void): () => void {
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === TOKEN_KEY || e.key === null) listener();
+  };
+  window.addEventListener(TOKEN_CHANGE_EVENT, listener);
+  window.addEventListener('storage', onStorage);
+  return () => {
+    window.removeEventListener(TOKEN_CHANGE_EVENT, listener);
+    window.removeEventListener('storage', onStorage);
+  };
+}
 
 /** Headers for admin API calls. */
 export function authHeaders(): Record<string, string> {
@@ -26,6 +45,7 @@ export async function login(username: string, password: string): Promise<void> {
   const body = (await res.json().catch(() => ({}))) as { token?: string; error?: string };
   if (!res.ok || !body.token) throw new LoginError(body.error ?? 'Could not log in. Please try again.');
   localStorage.setItem(TOKEN_KEY, body.token);
+  window.dispatchEvent(new Event(TOKEN_CHANGE_EVENT));
 }
 
 /** The current staff session, or null when there is no valid (unexpired) token. */
