@@ -6,6 +6,8 @@ import { check, index, integer, pgTable, real, text, timestamp, uuid } from 'dri
 export const rooms = pgTable('rooms', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull().unique('rooms_name_unique'),
+  // A colour from the room palette (server/src/palette.ts); null for rooms created before colours.
+  colour: text('colour'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

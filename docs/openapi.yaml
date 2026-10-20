@@ -101,6 +101,13 @@ paths:
                   type: string
                   maxLength: 100
                   description: Unique, trimmed
+                colour:
+                  allOf:
+                    - $ref: '#/components/schemas/RoomColour'
+                  description: >-
+                    Optional. When omitted the server assigns the first palette colour no room
+                    shows, or, once every colour is in use, the one the fewest rooms show (the
+                    earliest in palette order on a tie). Any other value, `null` included, is a 400.
       responses:
         '201':
           description: Created
@@ -141,7 +148,7 @@ paths:
         '404':
           $ref: '#/components/responses/Error'
     patch:
-      summary: Rename a room
+      summary: Rename a room and/or change its colour
       security:
         - staffToken: []
       parameters:
@@ -157,15 +164,18 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name]
+              description: >-
+                `name` is required unless `colour` is given; fields left out keep their value.
               properties:
                 name:
                   type: string
                   maxLength: 100
                   description: Unique, trimmed
+                colour:
+                  $ref: '#/components/schemas/RoomColour'
       responses:
         '200':
-          description: The renamed room
+          description: The updated room
           content:
             application/json:
               schema:
@@ -556,12 +566,25 @@ components:
           format: uuid
         name:
           type: string
+        colour:
+          allOf:
+            - $ref: '#/components/schemas/RoomColour'
+          description: >-
+            Always set. A room without a stored colour (created before colours) gets one derived
+            from its id: the last 8 hex digits of the UUID, as a number, modulo 8, index the palette.
+            It does not change when other rooms are added or deleted.
         createdAt:
           type: string
           format: date-time
         updatedAt:
           type: string
           format: date-time
+    RoomColour:
+      type: string
+      description: >-
+        A colour from the room palette in docs/design/visual-style.md, in palette order (Moss, Sky,
+        Lavender, Sand, Coral, Teal, Gold, Rose). Accepted in any case, returned in lower case.
+      enum: ['#7fbf95', '#7fa8e0', '#a99be0', '#e0ae7f', '#e08a84', '#6cc4c0', '#d9c46a', '#d98fb8']
     RoomFile:
       type: object
       properties:

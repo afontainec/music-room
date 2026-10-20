@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import pg from 'pg';
 import { adminHeaders } from './admin';
 
 const unique = () => `e2e-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -138,4 +139,81 @@ test('Duplicate room name returns clear error', async ({ request }) => {
   const res = await request.post('/api/rooms', { headers, data: { name } });
   expect(res.status()).toBe(409);
   expect(await res.json()).toEqual({ error: `A room named "${name}" already exists` });
+});
+
+const palette = ['#7fbf95', '#7fa8e0', '#a99be0', '#e0ae7f', '#e08a84', '#6cc4c0', '#d9c46a', '#d98fb8'];
+const databaseUrl = process.env.DATABASE_URL ?? 'postgres://music_room:music_room@localhost:5432/music_room';
+
+/** The default from the issue, for the colours rooms show. */
+function expectedDefault(colours: string[]): string {
+  const count = (c: string) => colours.filter((x) => x === c).length;
+  return palette.reduce((best, c) => (count(c) < count(best) ? c : best));
+}
+
+test('POST /api/rooms accepts an optional colour; if omitted the server assigns the first unused palette colour, or the least-used (earliest on a tie) once all are used', async ({
+  request,
+}) => {
+  const headers = await adminHeaders(request);
+  const chosen = await request.post('/api/rooms', { headers, data: { name: unique(), colour: '#D98FB8' } });
+  expect(chosen.status()).toBe(201);
+  expect((await chosen.json()).colour).toBe('#d98fb8');
+
+  // Other test files create rooms in parallel, so retry until none lands between the read and the create.
+  await expect(async () => {
+    const before = (await (await request.get('/api/rooms', { headers })).json()).map((r: { colour: string }) => r.colour);
+    const room = await (await request.post('/api/rooms', { headers, data: { name: unique() } })).json();
+    expect(room.colour).toBe(expectedDefault(before));
+  }).toPass();
+});
+
+test('Colours outside the palette are rejected with 400 on create and on PATCH /api/rooms/:id', async ({ request }) => {
+  const headers = await adminHeaders(request);
+  const name = unique();
+  for (const colour of ['#000000', 'Moss', null]) {
+    const res = await request.post('/api/rooms', { headers, data: { name, colour } });
+    expect(res.status()).toBe(400);
+    expect((await res.json()).error).toMatch(/^Colour must be one of the room palette/);
+  }
+  const room = await (await request.post('/api/rooms', { headers, data: { name, colour: palette[2] } })).json();
+  const bad = await request.patch(`/api/rooms/${room.id}`, { headers, data: { colour: '#123456' } });
+  expect(bad.status()).toBe(400);
+  expect((await (await request.get(`/api/rooms/${room.id}`)).json()).colour).toBe(palette[2]);
+
+  const good = await request.patch(`/api/rooms/${room.id}`, { headers, data: { colour: palette[5] } });
+  expect(good.status()).toBe(200);
+  expect(await good.json()).toMatchObject({ name, colour: palette[5] });
+});
+
+test("GET /api/rooms and GET /api/rooms/:id return each room's colour", async ({ request }) => {
+  const headers = await adminHeaders(request);
+  const room = await (await request.post('/api/rooms', { headers, data: { name: unique(), colour: palette[3] } })).json();
+  const list = await (await request.get('/api/rooms', { headers })).json();
+  expect(list.find((r: { id: string }) => r.id === room.id).colour).toBe(palette[3]);
+  for (const r of list) expect(palette).toContain(r.colour);
+  expect((await (await request.get(`/api/rooms/${room.id}`)).json()).colour).toBe(palette[3]);
+});
+
+test('A room without a stored colour returns a palette colour derived from its id (stable across other rooms being added/removed)', async ({
+  request,
+}) => {
+  const headers = await adminHeaders(request);
+  // Rooms created before colours have none stored; only the database can make one now.
+  const client = new pg.Client({ connectionString: databaseUrl });
+  await client.connect();
+  let id: string;
+  try {
+    id = (await client.query('insert into rooms (name) values ($1) returning id', [unique()])).rows[0].id;
+  } finally {
+    await client.end();
+  }
+  const expected = palette[Number.parseInt(id.replace(/-/g, '').slice(-8), 16) % palette.length];
+  const colour = async () => (await (await request.get(`/api/rooms/${id}`)).json()).colour;
+  expect(await colour()).toBe(expected);
+
+  const other = await (await request.post('/api/rooms', { headers, data: { name: unique() } })).json();
+  expect(await colour()).toBe(expected);
+  await request.delete(`/api/rooms/${other.id}`, { headers });
+  expect(await colour()).toBe(expected);
+  const listed = (await (await request.get('/api/rooms', { headers })).json()).find((r: { id: string }) => r.id === id);
+  expect(listed.colour).toBe(expected);
 });
