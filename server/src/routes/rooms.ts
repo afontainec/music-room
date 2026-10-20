@@ -1,7 +1,8 @@
 import { asc, eq, sql } from 'drizzle-orm';
 import type { FastifyInstance, preHandlerHookHandler } from 'fastify';
 import type { Db } from '../db/client.js';
-import { roomFiles, rooms } from '../db/schema.js';
+import { type Room, roomFiles, rooms } from '../db/schema.js';
+import { defaultColour, invalidColour, parseColour, roomColour } from '../palette.js';
 import { pickNextTrack } from '../playback.js';
 import type { Presence } from '../presence.js';
 import type { Storage } from '../storage/storage.js';
@@ -27,6 +28,9 @@ function parseName(value: unknown): { name: string } | { error: string } {
   return { name };
 }
 
+/** The room as the API returns it: `colour` is always a palette colour, derived from the id when none is stored. */
+const withColour = (room: Room) => ({ ...room, colour: roomColour(room) });
+
 const duplicateName = (name: string) => ({ error: `A room named "${name}" already exists` });
 
 // Postgres unique_violation; drizzle wraps driver errors, so look at the cause too.
@@ -40,34 +44,59 @@ function isUniqueViolation(err: unknown): boolean {
 export async function roomRoutes(app: FastifyInstance, opts: RoomRoutesOptions) {
   const { db, storage, presence, requireAdmin } = opts;
 
-  app.post<{ Body: { name?: unknown } }>('/api/rooms', { preHandler: requireAdmin }, async (req, reply) => {
-    const parsed = parseName(req.body?.name);
-    if ('error' in parsed) return reply.code(400).send(parsed);
-    const { name } = parsed;
-    const [room] = await db.insert(rooms).values({ name }).onConflictDoNothing().returning();
-    if (!room) return reply.code(409).send(duplicateName(name));
-    return reply.code(201).send(room);
-  });
+  // Without a colour the room gets the default for the colours existing rooms show. Two rooms
+  // created at once may get the same one; colours need not be unique, so that is acceptable.
+  app.post<{ Body: { name?: unknown; colour?: unknown } }>(
+    '/api/rooms',
+    { preHandler: requireAdmin },
+    async (req, reply) => {
+      const parsed = parseName(req.body?.name);
+      if ('error' in parsed) return reply.code(400).send(parsed);
+      const { name } = parsed;
+      let colour: string | undefined;
+      const requested = req.body?.colour;
+      if (requested === undefined) {
+        const existing = await db.select({ id: rooms.id, colour: rooms.colour }).from(rooms);
+        colour = defaultColour(existing.map(roomColour));
+      } else {
+        colour = parseColour(requested);
+        if (!colour) return reply.code(400).send(invalidColour);
+      }
+      const [room] = await db.insert(rooms).values({ name, colour }).onConflictDoNothing().returning();
+      if (!room) return reply.code(409).send(duplicateName(name));
+      return reply.code(201).send(withColour(room));
+    },
+  );
 
-  // Rename. The unique constraint, not a prior lookup, decides duplicates, so two renames cannot race.
-  app.patch<{ Params: { id: string }; Body: { name?: unknown } }>(
+  // Rename and/or recolour. The unique constraint, not a prior lookup, decides duplicates, so two
+  // renames cannot race.
+  app.patch<{ Params: { id: string }; Body: { name?: unknown; colour?: unknown } }>(
     '/api/rooms/:id',
     { preHandler: requireAdmin },
     async (req, reply) => {
       if (!UUID.test(req.params.id)) return reply.code(404).send({ error: 'Room not found' });
-      const parsed = parseName(req.body?.name);
-      if ('error' in parsed) return reply.code(400).send(parsed);
-      const { name } = parsed;
+      const body = req.body ?? {};
+      const changes: { name?: string; colour?: string } = {};
+      // The name is required unless the request only changes the colour.
+      if (body.name !== undefined || body.colour === undefined) {
+        const parsed = parseName(body.name);
+        if ('error' in parsed) return reply.code(400).send(parsed);
+        changes.name = parsed.name;
+      }
+      if (body.colour !== undefined) {
+        changes.colour = parseColour(body.colour);
+        if (!changes.colour) return reply.code(400).send(invalidColour);
+      }
       try {
         const [room] = await db
           .update(rooms)
-          .set({ name, updatedAt: sql`now()` })
+          .set({ ...changes, updatedAt: sql`now()` })
           .where(eq(rooms.id, req.params.id))
           .returning();
         if (!room) return reply.code(404).send({ error: 'Room not found' });
-        return room;
+        return withColour(room);
       } catch (err) {
-        if (isUniqueViolation(err)) return reply.code(409).send(duplicateName(name));
+        if (isUniqueViolation(err)) return reply.code(409).send(duplicateName(changes.name ?? ''));
         throw err;
       }
     },
@@ -102,7 +131,9 @@ export async function roomRoutes(app: FastifyInstance, opts: RoomRoutesOptions) 
   });
 
   // The full list is for staff; visitors open a room by its id (a link they were given).
-  app.get('/api/rooms', { preHandler: requireAdmin }, async () => db.select().from(rooms).orderBy(asc(rooms.name)));
+  app.get('/api/rooms', { preHandler: requireAdmin }, async () =>
+    (await db.select().from(rooms).orderBy(asc(rooms.name))).map(withColour),
+  );
 
   app.get<{ Params: { id: string } }>('/api/rooms/:id', async (req, reply) => {
     if (!UUID.test(req.params.id)) return reply.code(404).send({ error: 'Room not found' });
@@ -113,7 +144,7 @@ export async function roomRoutes(app: FastifyInstance, opts: RoomRoutesOptions) 
       .from(roomFiles)
       .where(eq(roomFiles.roomId, room.id))
       .orderBy(asc(roomFiles.createdAt));
-    return { ...room, files };
+    return { ...withColour(room), files };
   });
 
   // Random pick on the server, so it can become the room's shared playback state once listeners sync.

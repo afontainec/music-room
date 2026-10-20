@@ -2,6 +2,7 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
+import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/pglite';
 import type { FastifyInstance } from 'fastify';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -9,6 +10,7 @@ import { buildApp } from '../app.js';
 import type { Db } from '../db/client.js';
 import { migrateUp } from '../db/migrate.js';
 import * as schema from '../db/schema.js';
+import { ROOM_PALETTE } from '../palette.js';
 import { Presence } from '../presence.js';
 import { LocalDiskStorage } from '../storage/local.js';
 import { adminHeaders, testAuth } from '../test/admin.js';
@@ -176,6 +178,97 @@ describe('room routes', () => {
     it('needs a staff session', async () => {
       const room = (await create('Chill')).json();
       expect((await rename(room.id, 'Forest', {})).statusCode).toBe(401);
+    });
+  });
+
+  describe('colour', () => {
+    const createIn = (name: string, colour: unknown) =>
+      app.inject({ method: 'POST', url: '/api/rooms', headers: admin, payload: { name, colour } });
+    const patch = (id: string, payload: object) =>
+      app.inject({ method: 'PATCH', url: `/api/rooms/${id}`, headers: admin, payload });
+    const get = async (id: string) => (await app.inject({ method: 'GET', url: `/api/rooms/${id}` })).json();
+    // A room as created before colours: nothing stored.
+    const legacyRoom = async (name: string, id: string) => {
+      await db.insert(schema.rooms).values({ id, name });
+      return id;
+    };
+
+    it('stores the colour given on create, case-insensitively', async () => {
+      const res = await createIn('Forest', '#A99BE0');
+      expect(res.statusCode).toBe(201);
+      expect(res.json().colour).toBe('#a99be0');
+      expect((await get(res.json().id)).colour).toBe('#a99be0');
+    });
+
+    it('assigns the first unused palette colour when none is given', async () => {
+      expect((await create('A')).json().colour).toBe(ROOM_PALETTE[0]);
+      await createIn('B', ROOM_PALETTE[2]);
+      expect((await create('C')).json().colour).toBe(ROOM_PALETTE[1]);
+      expect((await create('D')).json().colour).toBe(ROOM_PALETTE[3]);
+    });
+
+    it('assigns the least-used colour, earliest on a tie, once every colour is used', async () => {
+      for (const [i, colour] of ROOM_PALETTE.entries()) await createIn(`Room ${i}`, colour);
+      await createIn('Extra 1', ROOM_PALETTE[0]);
+      await createIn('Extra 2', ROOM_PALETTE[1]);
+      expect((await create('Next')).json().colour).toBe(ROOM_PALETTE[2]);
+      expect((await create('After')).json().colour).toBe(ROOM_PALETTE[3]);
+    });
+
+    it('counts the derived colour of rooms without a stored one', async () => {
+      await legacyRoom('Old', '00000000-0000-4000-8000-000000000000'); // derives palette[0]
+      expect((await create('New')).json().colour).toBe(ROOM_PALETTE[1]);
+    });
+
+    it('rejects colours outside the palette on create', async () => {
+      for (const colour of ['#000000', 'Moss', '', null, 3]) {
+        const res = await createIn('Forest', colour);
+        expect(res.statusCode).toBe(400);
+        expect(res.json().error).toMatch(/^Colour must be one of the room palette/);
+      }
+      expect((await app.inject({ method: 'GET', url: '/api/rooms', headers: admin })).json()).toEqual([]);
+    });
+
+    it('changes the colour on PATCH, alone or with the name', async () => {
+      const room = (await create('Forest')).json();
+      const res = await patch(room.id, { colour: ROOM_PALETTE[5] });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toMatchObject({ name: 'Forest', colour: ROOM_PALETTE[5] });
+      expect(await get(room.id)).toMatchObject({ name: 'Forest', colour: ROOM_PALETTE[5] });
+      await patch(room.id, { name: 'Woods', colour: ROOM_PALETTE[6] });
+      expect(await get(room.id)).toMatchObject({ name: 'Woods', colour: ROOM_PALETTE[6] });
+      await patch(room.id, { name: 'Grove' });
+      expect(await get(room.id)).toMatchObject({ name: 'Grove', colour: ROOM_PALETTE[6] });
+    });
+
+    it('rejects colours outside the palette on PATCH and keeps the room as it was', async () => {
+      const room = (await createIn('Forest', ROOM_PALETTE[4])).json();
+      for (const colour of ['#ffffff', 'red', null]) {
+        expect((await patch(room.id, { colour })).statusCode).toBe(400);
+        expect((await patch(room.id, { name: 'Woods', colour })).statusCode).toBe(400);
+      }
+      expect(await get(room.id)).toMatchObject({ name: 'Forest', colour: ROOM_PALETTE[4] });
+    });
+
+    it('returns each room colour from the list and the room', async () => {
+      await createIn('A', ROOM_PALETTE[7]);
+      const id = await legacyRoom('B', '00000000-0000-4000-8000-00000000000b');
+      const list = (await app.inject({ method: 'GET', url: '/api/rooms', headers: admin })).json();
+      expect(list.map((r: { colour: string }) => r.colour)).toEqual([ROOM_PALETTE[7], ROOM_PALETTE[0xb % 8]]);
+      expect((await get(id)).colour).toBe(ROOM_PALETTE[0xb % 8]);
+    });
+
+    it('derives a stable colour from the id for a room without one, whatever other rooms do', async () => {
+      const id = await legacyRoom('Old', '3f2c1a9e-1234-4abc-9def-0123deadbeef');
+      const expected = ROOM_PALETTE[0xdeadbeef % 8];
+      expect((await get(id)).colour).toBe(expected);
+      const others = [];
+      for (const name of ['A', 'B', 'C']) others.push((await create(name)).json().id);
+      expect((await get(id)).colour).toBe(expected);
+      for (const other of others) await app.inject({ method: 'DELETE', url: `/api/rooms/${other}`, headers: admin });
+      expect((await get(id)).colour).toBe(expected);
+      const [row] = await db.select().from(schema.rooms).where(eq(schema.rooms.id, id));
+      expect(row.colour).toBeNull();
     });
   });
 
