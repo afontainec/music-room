@@ -35,8 +35,12 @@ export async function presenceRoutes(app: FastifyInstance, opts: PresenceRoutesO
       if (trackId !== null && (typeof trackId !== 'string' || !UUID.test(trackId))) {
         return reply.code(400).send({ error: 'trackId must be a track id or null' });
       }
-      if (!(await roomExists(req.params.id))) return roomNotFound(reply);
-      return presence.heartbeat(req.params.id, deviceId, trackId);
+      if (!UUID.test(req.params.id)) return roomNotFound(reply);
+      const [room] = await db.select({ id: rooms.id, name: rooms.name }).from(rooms).where(eq(rooms.id, req.params.id));
+      if (!room) return roomNotFound(reply);
+      // The room's current name rides along, so an open room page picks up a rename on its next
+      // heartbeat; a 404 tells it the room was deleted.
+      return { ...presence.heartbeat(req.params.id, deviceId, trackId), room };
     },
   );
 

@@ -3,7 +3,7 @@ import { getRoom, NotFoundError, type RoomDetails } from '../api/rooms';
 import { AudioPlayer } from '../components/AudioPlayer';
 import { useOptionalStaffSession } from '../hooks/useOptionalStaffSession';
 import { useSoundscapeLayer } from '../hooks/useSoundscapeLayer';
-import { Link } from '../router';
+import { Link, navigate } from '../router';
 
 type RoomState =
   | { status: 'loading' }
@@ -18,7 +18,7 @@ type RoomState =
 // session get a link back to the room list; leaving unmounts the player, which stops the audio.
 export function RoomPage({ id }: { id: string }) {
   const [room, setRoom] = useState<RoomState>({ status: 'loading' });
-  const { state: layer, next } = useSoundscapeLayer(id);
+  const { state: layer, roomName, next } = useSoundscapeLayer(id);
   const staff = useOptionalStaffSession();
 
   useEffect(() => {
@@ -33,6 +33,25 @@ export function RoomPage({ id }: { id: string }) {
   }, [id]);
 
   const notFound = room.status === 'not-found' || layer.status === 'not-found';
+  // A room that loaded and then went missing was deleted by staff while the visitor was in it.
+  // Unmounting the player stops the audio; the visitor gets a way back instead of silence.
+  const deleted = notFound && room.status === 'ready';
+  // A rename only changes the text: the player keeps its audio element and the layer plays on.
+  const name = room.status === 'ready' ? (roomName ?? room.room.name) : '';
+
+  if (deleted) {
+    return (
+      <main className="page">
+        <h1>This room has closed</h1>
+        <p className="status" role="status">
+          Staff have removed this room, so its soundscape has stopped. Thanks for listening.
+        </p>
+        <button type="button" className="play-button" onClick={() => navigate('/')}>
+          Back to room selection
+        </button>
+      </main>
+    );
+  }
 
   return (
     <main className="page">
@@ -51,7 +70,7 @@ export function RoomPage({ id }: { id: string }) {
         <p className="status">Loading room…</p>
       ) : (
         <>
-          <h1>{room.room.name}</h1>
+          <h1>{name}</h1>
           <p className="status">
             {room.room.files.length === 1 ? '1 track' : `${room.room.files.length} tracks`}
           </p>
@@ -63,7 +82,7 @@ export function RoomPage({ id }: { id: string }) {
               title={layer.layer.name}
               trackId={layer.layer.id}
               turn={layer.turn}
-              album={room.room.name}
+              album={name}
               onEnded={next}
             />
           ) : (

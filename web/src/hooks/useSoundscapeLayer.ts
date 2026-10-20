@@ -60,9 +60,13 @@ const latestSession = new Map<string, number>();
 // Gets this device its layer in the room and the next one each time `next()` is called (when
 // the layer ends), keeps the device present with heartbeats while the page is open, and
 // releases the layer when the visitor leaves or the page closes. The server picks every
-// layer, since only it knows what the other devices are playing.
+// layer, since only it knows what the other devices are playing. The heartbeats double as the
+// page's poll for staff changes: each answer has the room's current name (`roomName`), and a 404
+// means the room was deleted, which turns the state to 'not-found' and stops all requests.
 export function useSoundscapeLayer(roomId: string) {
   const [state, setState] = useState<LayerState>({ status: 'loading' });
+  // The room's name as of the last heartbeat, so a rename reaches the open page.
+  const [roomName, setRoomName] = useState<string | null>(null);
   const nextRef = useRef<() => void>(() => {});
 
   useEffect(() => {
@@ -70,9 +74,24 @@ export function useSoundscapeLayer(roomId: string) {
     const session = (latestSession.get(roomId) ?? 0) + 1;
     latestSession.set(roomId, session);
     let active = true;
+    // The room does not exist (anymore): staff deleted it, which also cleared its presence.
+    let gone = false;
     let layer: Layer | null = null;
     let pending = false;
     let retry: { timer: number; run: () => void } | null = null;
+
+    // Stops every request for the room, so the page goes quiet instead of collecting 404s.
+    const roomGone = () => {
+      gone = true;
+      pending = false;
+      clearInterval(interval);
+      if (retry) clearTimeout(retry.timer);
+      retry = null;
+      setState({ status: 'not-found' });
+    };
+    const release = () => {
+      if (!gone) releaseLayer(roomId, device);
+    };
 
     const assign = (previous: string | null) => {
       pending = true;
@@ -90,8 +109,8 @@ export function useSoundscapeLayer(roomId: string) {
           setState((s) => ({ status: 'ready', layer: track, turn: s.status === 'ready' ? s.turn + 1 : 0 }));
         },
         (err) => {
-          if (!active) return;
-          if (err instanceof NotFoundError) return setState({ status: 'not-found' });
+          if (!active || gone) return;
+          if (err instanceof NotFoundError) return roomGone();
           const run = () => {
             retry = null;
             assign(previous);
@@ -103,11 +122,16 @@ export function useSoundscapeLayer(roomId: string) {
 
     const heartbeat = () => {
       // A pending request records the device itself, with the track it is about to play.
-      if (!pending) sendHeartbeat(roomId, device, layer?.id ?? null).catch(() => {});
+      // Its answer carries the room's current name, or a 404 once staff deleted the room.
+      if (pending || gone) return;
+      sendHeartbeat(roomId, device, layer?.id ?? null).then(
+        (room) => active && !gone && setRoomName(room.name),
+        (err) => active && !gone && err instanceof NotFoundError && roomGone(),
+      );
     };
 
     nextRef.current = () => {
-      if (active && !pending) assign(layer?.id ?? null);
+      if (active && !pending && !gone) assign(layer?.id ?? null);
     };
 
     // Background tabs may throttle or freeze timers, and a frozen page can outlive the presence
@@ -122,7 +146,7 @@ export function useSoundscapeLayer(roomId: string) {
       }
     };
     const pageshow = (e: PageTransitionEvent) => e.persisted && resume(); // back from bfcache
-    const pagehide = () => releaseLayer(roomId, device);
+    const pagehide = release;
 
     assign(readLastPlayed(roomId));
     const interval = window.setInterval(heartbeat, HEARTBEAT_MS);
@@ -138,11 +162,12 @@ export function useSoundscapeLayer(roomId: string) {
       window.removeEventListener('pageshow', pageshow);
       window.removeEventListener('pagehide', pagehide);
       nextRef.current = () => {};
-      releaseLayer(roomId, device);
+      release();
       setState({ status: 'loading' });
+      setRoomName(null);
     };
   }, [roomId]);
 
   const next = useCallback(() => nextRef.current(), []);
-  return { state, next };
+  return { state, roomName, next };
 }

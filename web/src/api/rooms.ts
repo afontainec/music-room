@@ -69,9 +69,12 @@ export const requestLayer = (roomId: string, deviceId: string, previousTrackId: 
     (res) => res.track,
   );
 
-/** Keeps the device present in the room, playing `trackId`. */
+/** Keeps the device present in the room, playing `trackId`. Resolves with the room's current id and
+ * name, so a rename reaches the open page; rejects with `NotFoundError` once the room is deleted. */
 export const sendHeartbeat = (roomId: string, deviceId: string, trackId: string | null) =>
-  postJson<unknown>(`${roomPath(roomId)}/presence/heartbeat`, { deviceId, trackId }).then(() => {});
+  postJson<{ room: Pick<Room, 'id' | 'name'> }>(`${roomPath(roomId)}/presence/heartbeat`, { deviceId, trackId }).then(
+    (res) => res.room,
+  );
 
 /** Frees the device's layer right away. `keepalive` lets the request outlive a closing page;
  * failures are ignored, since the server drops the device 30 s after its last heartbeat anyway. */

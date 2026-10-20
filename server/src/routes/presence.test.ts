@@ -20,6 +20,7 @@ describe('presence routes', () => {
   let app: FastifyInstance;
   let clock: number;
   let roomId: string;
+  let headers: Record<string, string>;
 
   beforeEach(async () => {
     const db: Db = drizzle(new PGlite(), { schema });
@@ -29,7 +30,7 @@ describe('presence routes', () => {
     const presence = new Presence({ now: () => clock });
     const auth = testAuth();
     app = await buildApp({ db, storage: new LocalDiskStorage(dir), maxUploadBytes: 1000, presence, auth });
-    const headers = adminHeaders(auth);
+    headers = adminHeaders(auth);
     roomId = (await app.inject({ method: 'POST', url: '/api/rooms', headers, payload: { name: 'Forest' } })).json().id;
   });
 
@@ -45,11 +46,21 @@ describe('presence routes', () => {
   it('registers and refreshes a device on heartbeat', async () => {
     const res = await heartbeat({ deviceId: 'phone-1' });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ deviceId: 'phone-1', trackId: null, lastSeen: clock });
+    expect(res.json()).toEqual({ deviceId: 'phone-1', trackId: null, lastSeen: clock, room: { id: roomId, name: 'Forest' } });
 
     clock += 10_000;
     await heartbeat({ deviceId: 'phone-1', trackId: TRACK });
     expect(await present()).toEqual([{ deviceId: 'phone-1', trackId: TRACK, lastSeen: clock }]);
+  });
+
+  it("answers a heartbeat with the room's current name, and 404 once the room is deleted", async () => {
+    await app.inject({ method: 'PATCH', url: `/api/rooms/${roomId}`, headers, payload: { name: 'Night forest' } });
+    expect((await heartbeat({ deviceId: 'phone-1' })).json().room).toEqual({ id: roomId, name: 'Night forest' });
+
+    expect((await app.inject({ method: 'DELETE', url: `/api/rooms/${roomId}`, headers })).statusCode).toBe(204);
+    const res = await heartbeat({ deviceId: 'phone-1' });
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toEqual({ error: 'Room not found' });
   });
 
   it('drops a device 30 seconds after its last heartbeat', async () => {

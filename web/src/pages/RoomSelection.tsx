@@ -8,18 +8,52 @@ type State =
   | { status: 'staff-only' }
   | { status: 'ready'; rooms: Room[] };
 
-// Rooms are fetched on every visit, so rooms added or removed since show up on reload. The list
-// is staff only; visitors open their room from a direct link instead.
+/** How often the open list is fetched again, so rooms that staff rename or delete elsewhere
+ * update here within this long. */
+export const ROOM_LIST_POLL_MS = 5_000;
+
+// The list is fetched on every visit and then polled while staff see it (and again on returning
+// to the tab), so renamed and deleted rooms update without a reload. The list is staff only;
+// visitors open their room from a direct link instead, and get no polling.
 export function RoomSelection() {
   const [state, setState] = useState<State>({ status: 'loading' });
 
   useEffect(() => {
     let active = true;
-    listRooms()
-      .then((rooms) => active && setState({ status: 'ready', rooms }))
-      .catch((err) => active && setState({ status: err instanceof StaffOnlyError ? 'staff-only' : 'error' }));
+    let timer: number | undefined;
+    let loading = false;
+    let staffOnly = false;
+    const load = () => {
+      if (loading || staffOnly) return;
+      clearTimeout(timer);
+      loading = true;
+      listRooms().then(
+        (rooms) => {
+          loading = false;
+          if (!active) return;
+          setState({ status: 'ready', rooms });
+          timer = window.setTimeout(load, ROOM_LIST_POLL_MS);
+        },
+        (err) => {
+          loading = false;
+          if (!active) return;
+          if (err instanceof StaffOnlyError) {
+            staffOnly = true;
+            return setState({ status: 'staff-only' });
+          }
+          // A failed poll keeps the list shown and tries again; only a failed first load shows the error.
+          setState((s) => (s.status === 'ready' ? s : { status: 'error' }));
+          timer = window.setTimeout(load, ROOM_LIST_POLL_MS);
+        },
+      );
+    };
+    const resume = () => document.visibilityState === 'visible' && load();
+    load();
+    document.addEventListener('visibilitychange', resume);
     return () => {
       active = false;
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', resume);
     };
   }, []);
 

@@ -268,15 +268,34 @@ paths:
                   description: The track the device is playing, if any
       responses:
         '200':
-          description: The device's presence entry
+          description: >-
+            The device's presence entry and the room's current name, which the room page shows,
+            so a rename reaches open pages with their next heartbeat
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PresentDevice'
+                allOf:
+                  - $ref: '#/components/schemas/PresentDevice'
+                  - type: object
+                    required: [room]
+                    properties:
+                      room:
+                        type: object
+                        required: [id, name]
+                        properties:
+                          id:
+                            type: string
+                            format: uuid
+                          name:
+                            type: string
         '400':
           $ref: '#/components/responses/Error'
         '404':
-          $ref: '#/components/responses/Error'
+          description: The room does not exist (or was deleted); the room page tells its listener
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/rooms/{id}/presence:
     get:
       summary: Devices currently present in the room
