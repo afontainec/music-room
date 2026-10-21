@@ -2,9 +2,13 @@ import { expect } from '@playwright/test';
 import { adminHeaders, asStaff } from '../admin';
 import { caption, click, test } from './screencast';
 
+// Phone size, as in the mockup. The video size is fixed when the page opens, so it is set here
+// rather than with page.setViewportSize, which would leave the page in a corner of a 1280x720 frame.
+const phone = { width: 393, height: 851 };
+test.use({ viewport: phone, video: { mode: 'on', size: phone } });
+
 test('The room selection page in the dark "Glow" style', async ({ page }) => {
-  await page.setViewportSize({ width: 393, height: 851 }); // phone width, as in the mockup
-  const suffix = Date.now().toString(36).slice(-4);
+  const suffix = Math.random().toString(36).slice(2, 6);
   const headers = await adminHeaders(page.request);
   const create = async (name: string, colour: string, tracks: number) => {
     const res = await page.request.post('/api/rooms', { headers, data: { name, colour } });
