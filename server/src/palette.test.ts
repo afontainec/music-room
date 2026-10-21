@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ROOM_PALETTE, colourFromId, defaultColour, parseColour, roomColour } from './palette.js';
+import * as web from '../../web/src/palette.js';
 
 describe('room palette', () => {
   it('matches docs/design/visual-style.md, in order', () => {
@@ -38,5 +39,31 @@ describe('room palette', () => {
     expect(defaultColour([...ROOM_PALETTE])).toBe(ROOM_PALETTE[0]);
     expect(defaultColour([...ROOM_PALETTE, ROOM_PALETTE[0], ROOM_PALETTE[1]])).toBe(ROOM_PALETTE[2]);
     expect(defaultColour([...ROOM_PALETTE, ...ROOM_PALETTE.slice(0, 7)])).toBe(ROOM_PALETTE[7]);
+  });
+});
+
+// The staff area's colour picker (web/src/palette.ts) offers the same palette, in the same order,
+// and pre-selects the colour the server would default to.
+describe('web room palette', () => {
+  it('offers exactly the server palette, in order', () => {
+    expect(web.ROOM_PALETTE.map((c) => c.value)).toEqual([...ROOM_PALETTE]);
+    expect(web.ROOM_PALETTE.map((c) => c.name)).toEqual(['Moss', 'Sky', 'Lavender', 'Sand', 'Coral', 'Teal', 'Gold', 'Rose']);
+  });
+
+  it('pre-selects the same default as the server', () => {
+    const cases: string[][] = [
+      [],
+      [ROOM_PALETTE[0], ROOM_PALETTE[2]],
+      [...ROOM_PALETTE],
+      [...ROOM_PALETTE, ROOM_PALETTE[0], ROOM_PALETTE[1]],
+      [...ROOM_PALETTE, ...ROOM_PALETTE.slice(0, 7)],
+      [ROOM_PALETTE[5], ROOM_PALETTE[5], ROOM_PALETTE[0], ROOM_PALETTE[1], ROOM_PALETTE[2], ROOM_PALETTE[3], ROOM_PALETTE[4], ROOM_PALETTE[6], ROOM_PALETTE[7]],
+    ];
+    for (const used of cases) expect(web.defaultColour(used)).toBe(defaultColour(used));
+  });
+
+  it('names palette colours', () => {
+    expect(web.colourName('#7FBF95')).toBe('Moss');
+    expect(web.colourName(ROOM_PALETTE[7])).toBe('Rose');
   });
 });

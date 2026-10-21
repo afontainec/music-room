@@ -6,12 +6,15 @@ import {
   removeTrack,
   renameRoom,
   SessionExpiredError,
+  setRoomColour,
   uploadTrack,
   type Track,
 } from '../api/admin';
 import { getRoom, NotFoundError, type Room } from '../api/rooms';
+import { ColourPicker } from '../components/ColourPicker';
 import { TrackList, type TracksState } from '../components/TrackList';
 import { useStaffSession } from '../hooks/useStaffSession';
+import { colourName } from '../palette';
 import { Link, navigate } from '../router';
 
 type RoomState = { status: 'loading' } | { status: 'not-found' } | { status: 'error' } | { status: 'ready'; room: Room };
@@ -22,7 +25,7 @@ const ADD_MODES: [AddMode, string][] = [
   ['url', 'Add by URL'],
 ];
 
-// A room in the staff area: rename and delete controls, its tracks, a form to upload an mp3 or add
+// A room in the staff area: rename, colour and delete controls, its tracks, a form to upload an mp3 or add
 // one by URL, and a remove button per track. The list is fetched again after every addition or
 // removal, so it always shows what visitors get.
 export function AdminRoomPage({ id }: { id: string }) {
@@ -30,6 +33,8 @@ export function AdminRoomPage({ id }: { id: string }) {
   const [room, setRoom] = useState<RoomState>({ status: 'loading' });
   const [nameDraft, setNameDraft] = useState('');
   const [renaming, setRenaming] = useState(false);
+  const [colourDraft, setColourDraft] = useState<string | null>(null);
+  const [savingColour, setSavingColour] = useState(false);
   const [roomError, setRoomError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [tracks, setTracks] = useState<TracksState>({ status: 'loading' });
@@ -64,6 +69,7 @@ export function AdminRoomPage({ id }: { id: string }) {
         if (!active) return;
         setRoom({ status: 'ready', room: r });
         setNameDraft(r.name);
+        setColourDraft(r.colour);
       })
       .catch((err) => active && setRoom({ status: err instanceof NotFoundError ? 'not-found' : 'error' }));
     loadTracks(true);
@@ -94,6 +100,25 @@ export function AdminRoomPage({ id }: { id: string }) {
       failed(err, 'Could not rename the room. Please try again.', setRoomError);
     } finally {
       setRenaming(false);
+    }
+  };
+
+  // The colour is picked first and saved with a button, so moving through the swatches with the
+  // arrow keys does not send a request per colour.
+  const onSaveColour = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!colourDraft || savingColour) return;
+    setSavingColour(true);
+    setRoomError(null);
+    try {
+      const updated = await setRoomColour(id, colourDraft);
+      setRoom({ status: 'ready', room: updated });
+      setColourDraft(updated.colour);
+    } catch (err) {
+      if (err instanceof NotFoundError) return setRoom({ status: 'not-found' });
+      failed(err, 'Could not change the colour. Please try again.', setRoomError);
+    } finally {
+      setSavingColour(false);
     }
   };
 
@@ -209,6 +234,19 @@ export function AdminRoomPage({ id }: { id: string }) {
               onClick={() => onDelete(room.room.name)}
             >
               {deleting ? 'Deleting…' : 'Delete room'}
+            </button>
+          </form>
+          <form className="colour-form" onSubmit={onSaveColour}>
+            <p className="status">Current colour: {colourName(room.room.colour)}</p>
+            <ColourPicker
+              legend="Room colour"
+              name="room-colour"
+              value={colourDraft}
+              onChange={setColourDraft}
+              disabled={savingColour}
+            />
+            <button type="submit" disabled={savingColour || colourDraft === room.room.colour}>
+              {savingColour ? 'Saving…' : 'Save colour'}
             </button>
           </form>
           {roomError && (
