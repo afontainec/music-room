@@ -158,6 +158,6 @@ test('Changes reflect immediately in the public-facing app', async ({ page }) =>
   await page.getByRole('button', { name: 'Delete room' }).click();
   await expect(page).toHaveURL('/admin');
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Choose a room');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Where are you?');
   await expect(page.getByText(renamed)).toHaveCount(0);
 });

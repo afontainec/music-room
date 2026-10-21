@@ -22,9 +22,9 @@ body="$out/comment.md"
 
 while IFS=$'\t' read -r title video; do
   slug=$(echo "$title" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | cut -c1-60 | sed 's/^-//; s/-$//')
-  ffmpeg -loglevel error -y -i "$video" -c:v libx264 -pix_fmt yuv420p -movflags +faststart "$out/$slug.mp4"
-  ffmpeg -loglevel error -y -i "$video" \
-    -vf "fps=8,scale=800:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128[p];[b][p]paletteuse=dither=bayer" \
+  ffmpeg -nostdin -loglevel error -y -i "$video" -c:v libx264 -pix_fmt yuv420p -movflags +faststart "$out/$slug.mp4"
+  ffmpeg -nostdin -loglevel error -y -i "$video" \
+    -vf "fps=8,scale='min(800,iw)':-2:flags=lanczos,split[a][b];[a]palettegen=max_colors=128[p];[b][p]paletteuse=dither=bayer" \
     "$out/$slug.gif"
   {
     echo "### $title"

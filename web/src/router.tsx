@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useState, type AnchorHTMLAttributes, type MouseEvent, type ReactNode } from 'react';
 
 // A minimal History API router: the server falls back to index.html for every non-API path,
 // so client-side paths survive a reload. Swap for react-router once routes need nesting.
@@ -24,7 +24,9 @@ export function usePathname() {
   return pathname;
 }
 
-export function Link({ to, className, children }: { to: string; className?: string; children: ReactNode }) {
+type LinkProps = { to: string; children: ReactNode } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | 'onClick'>;
+
+export function Link({ to, children, ...rest }: LinkProps) {
   const onClick = (e: MouseEvent<HTMLAnchorElement>) => {
     // Let the browser handle new-tab and other modified clicks.
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -32,7 +34,7 @@ export function Link({ to, className, children }: { to: string; className?: stri
     navigate(to);
   };
   return (
-    <a href={to} className={className} onClick={onClick}>
+    <a {...rest} href={to} onClick={onClick}>
       {children}
     </a>
   );

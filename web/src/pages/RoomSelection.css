@@ -1,0 +1,105 @@
+/* Room selection (/), the "Glow" direction of docs/design/visual-style.md. */
+.selection {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 64px 20px 32px;
+}
+
+.selection-brand {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4px;
+}
+
+.selection-brand-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.selection-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0 4px;
+}
+
+.selection-retry {
+  min-height: var(--touch);
+  margin-top: 6px;
+  padding: 0 22px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.selection-retry:hover {
+  border-color: var(--text-muted);
+}
+
+.room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.room-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 164px;
+  padding: 18px;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: inherit;
+  text-decoration: none;
+}
+
+.room-tile:hover {
+  border-color: var(--border-strong);
+}
+
+.room-tile-dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--room-colour);
+  box-shadow: 0 0 24px var(--room-colour);
+}
+
+.room-tile-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.room-tile-name {
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.room-tile-layers {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
