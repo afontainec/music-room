@@ -30,9 +30,9 @@ test("Each room's colour on its card and on the room page", async ({ page }) => 
 
   await caption(page, 'Meanwhile staff change the room’s colour to coral…', 2000);
   await page.request.patch(`/api/rooms/${oceanId}`, { headers, data: { colour: '#e08a84' } });
-  // The open page re-reads its room when it returns to view (and every 30 s).
-  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await caption(page, '…and a reload of the room page shows coral, no server restart', 2000);
+  await page.reload();
   await expect(inner).toHaveCSS('stroke', 'rgb(224, 138, 132)');
-  await caption(page, '…and the open room page turns coral, no reload or restart', 3000);
+  await caption(page, 'The room is now coral', 3000);
   await expect(page.locator('.room-ring-dot')).toHaveCSS('fill', 'rgb(224, 138, 132)');
 });

@@ -91,11 +91,11 @@ test('Changing a colour in the admin area shows up in the public app without a r
   await page.reload();
   await expect(cardDot(page, room.name)).toHaveCSS('background-color', rgb('#6cc4c0'));
 
-  // An open room page picks up the change when it returns to view, without a reload.
+  // The room page shows the new colour after a reload, with the same server still running.
   await page.getByRole('link', { name: room.name, exact: true }).click();
   await expectRingsIn(page, '#6cc4c0');
   await setColour(request, room.id, '#d98fb8');
-  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await page.reload();
   await expectRingsIn(page, '#d98fb8');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(room.name);
 });

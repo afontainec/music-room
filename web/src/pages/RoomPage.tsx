@@ -12,10 +12,6 @@ type RoomState =
   | { status: 'error' }
   | { status: 'ready'; room: RoomDetails };
 
-// An open room page re-reads its room this often and on returning to view, so a staff edit (its
-// name, colour or tracks) shows up without a reload.
-const ROOM_REFRESH_MS = 30_000;
-
 // Entering a room gives this device one layer of the soundscape, chosen by the server so the
 // devices in the room play different tracks. When it ends the device gets its next layer, for as
 // long as the visitor stays; the visitor sees the layer's name but does not choose it. The page
@@ -27,32 +23,15 @@ export function RoomPage({ id }: { id: string }) {
   const { state: layer, next } = useSoundscapeLayer(id);
   const staff = useOptionalStaffSession();
 
+  // The room is read once on entry; a staff edit (name, colour, tracks) shows after a reload.
   useEffect(() => {
     let active = true;
-    let loaded = false;
-    const load = () =>
-      getRoom(id)
-        .then((room) => {
-          if (!active) return;
-          loaded = true;
-          setRoom({ status: 'ready', room });
-        })
-        .catch((err) => {
-          if (!active) return;
-          if (err instanceof NotFoundError) setRoom({ status: 'not-found' });
-          // A failed refresh keeps the room on screen; only a failed first load shows the error.
-          else if (!loaded) setRoom({ status: 'error' });
-        });
-    const onVisible = () => document.visibilityState === 'visible' && load();
-
     setRoom({ status: 'loading' });
-    load();
-    const timer = setInterval(load, ROOM_REFRESH_MS);
-    document.addEventListener('visibilitychange', onVisible);
+    getRoom(id)
+      .then((room) => active && setRoom({ status: 'ready', room }))
+      .catch((err) => active && setRoom({ status: err instanceof NotFoundError ? 'not-found' : 'error' }));
     return () => {
       active = false;
-      clearInterval(timer);
-      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [id]);
 
