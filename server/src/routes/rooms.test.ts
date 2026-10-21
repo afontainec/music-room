@@ -72,6 +72,40 @@ describe('room routes', () => {
     expect(res.json().map((r: { name: string }) => r.name)).toEqual(['A', 'B']);
   });
 
+  it("lists each room's track count, updated right after an upload or a removal", async () => {
+    const counts = async () =>
+      Object.fromEntries(
+        (await app.inject({ method: 'GET', url: '/api/rooms', headers: admin }))
+          .json()
+          .map((r: { name: string; trackCount: number }) => [r.name, r.trackCount]),
+      );
+    const addUrl = async (roomId: string, url: string) =>
+      (await app.inject({ method: 'POST', url: `/api/rooms/${roomId}/files/url`, headers: admin, payload: { url } })).json();
+    const upload = (roomId: string) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/rooms/${roomId}/files`,
+        headers: { ...admin, 'content-type': 'multipart/form-data; boundary=b' },
+        payload: Buffer.concat([
+          Buffer.from('--b\r\nContent-Disposition: form-data; name="file"; filename="birds.mp3"\r\n'),
+          Buffer.from('Content-Type: audio/mpeg\r\n\r\n'),
+          Buffer.concat([Buffer.from('ID3'), Buffer.alloc(97, 7)]),
+          Buffer.from('\r\n--b--\r\n'),
+        ]),
+      });
+    await create('Empty');
+    const one = (await create('One')).json();
+    const many = (await create('Many')).json();
+    await addUrl(one.id, 'https://example.com/one.mp3');
+    for (const n of ['a', 'b', 'c']) await addUrl(many.id, `https://example.com/${n}.mp3`);
+    expect(await counts()).toEqual({ Empty: 0, One: 1, Many: 3 });
+
+    const uploaded = (await upload(one.id)).json();
+    expect(await counts()).toEqual({ Empty: 0, One: 2, Many: 3 });
+    await app.inject({ method: 'DELETE', url: `/api/files/${uploaded.id}`, headers: admin });
+    expect(await counts()).toEqual({ Empty: 0, One: 1, Many: 3 });
+  });
+
   it('answers an anonymous room list request with 401 and no room data', async () => {
     await create('Forest');
     for (const headers of [{}, { authorization: 'Bearer nope' }]) {

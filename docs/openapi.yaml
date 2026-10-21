@@ -76,13 +76,23 @@ paths:
         - staffToken: []
       responses:
         '200':
-          description: Rooms ordered by name
+          description: Rooms ordered by name, each with its track count
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Room'
+                  allOf:
+                    - $ref: '#/components/schemas/Room'
+                    - type: object
+                      required: [trackCount]
+                      properties:
+                        trackCount:
+                          type: integer
+                          minimum: 0
+                          description: >-
+                            How many tracks (layers) the room has, uploads and URLs alike. Counted
+                            on each request, so it reflects an upload or removal at once.
         '401':
           $ref: '#/components/responses/Unauthorized'
     post:
