@@ -3,7 +3,15 @@ import { authHeaders } from './auth';
 export interface Room {
   id: string;
   name: string;
+  /** A colour from the room palette (docs/design/visual-style.md); the server derives one from the
+   * id for rooms without a stored colour, so it is always set. */
+  colour: string;
   createdAt: string;
+}
+
+/** A room in the room list, with the number of tracks (layers) it holds. */
+export interface RoomSummary extends Room {
+  trackCount: number;
 }
 
 export interface RoomFile {
@@ -43,11 +51,11 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
 export class StaffOnlyError extends Error {}
 
 /** Every room, ordered by name. Sends the staff token when there is one. */
-export async function listRooms(): Promise<Room[]> {
+export async function listRooms(): Promise<RoomSummary[]> {
   const res = await fetch('/api/rooms', { headers: authHeaders() });
   if (res.status === 401) throw new StaffOnlyError('GET /api/rooms');
   if (!res.ok) throw new Error(`GET /api/rooms failed with ${res.status}`);
-  return res.json() as Promise<Room[]>;
+  return res.json() as Promise<RoomSummary[]>;
 }
 
 export const getRoom = (id: string) => getJson<RoomDetails>(`/api/rooms/${encodeURIComponent(id)}`);

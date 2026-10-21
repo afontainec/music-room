@@ -1,16 +1,5 @@
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.5;
-  color: #1d1d1f;
-  background: #f5f5f7;
-}
+/* Pages not yet restyled to docs/design/visual-style.md (room page, staff area): the old layout
+   on the shared dark tokens (tokens.css), so they stay readable until their own restyle. */
 
 .page {
   max-width: 960px;
@@ -24,7 +13,7 @@ h1 {
 }
 
 .status {
-  color: #555;
+  color: var(--text-muted);
 }
 
 .room-list {
@@ -41,8 +30,8 @@ h1 {
   min-height: 44px; /* comfortable touch target on mobile */
   padding: 1rem 1.25rem;
   border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
+  background: var(--surface);
+  border: 1px solid var(--border);
   color: inherit;
   font-size: 1.125rem;
   font-weight: 600;
@@ -52,13 +41,13 @@ h1 {
 
 .room-card:hover,
 .room-card:focus-visible {
-  box-shadow: 0 2px 8px rgb(0 0 0 / 18%);
+  border-color: var(--border-strong);
 }
 
 .back-link {
   display: inline-block;
   margin-bottom: 1rem;
-  color: #0066cc;
+  color: var(--accent);
   text-decoration: none;
 }
 
@@ -66,8 +55,8 @@ h1 {
   margin-top: 1.5rem;
   padding: 1rem 1.25rem;
   border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
+  background: var(--surface);
+  border: 1px solid var(--border);
 }
 
 .now-playing {
@@ -106,8 +95,10 @@ h1 {
 .login-form input {
   min-height: 44px;
   padding: 0.5rem 0.75rem;
-  border: 1px solid #c7c7cc;
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--text);
   font: inherit;
 }
 
@@ -125,18 +116,18 @@ h1 {
 }
 
 .secondary-button {
-  background: #e5e5ea;
+  background: var(--surface-raised);
   color: inherit;
 }
 
 .form-error {
   margin: 0;
-  color: #c00;
+  color: var(--danger);
 }
 
 .form-success {
   margin: 0;
-  color: #1a7f37;
+  color: var(--accent);
 }
 
 h2 {
@@ -213,8 +204,10 @@ h2 {
   min-width: 0;
   min-height: 44px;
   padding: 0.5rem 0.75rem;
-  border: 1px solid #c7c7cc;
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--text);
   font: inherit;
 }
 
@@ -244,8 +237,8 @@ h2 {
   padding: 0;
   list-style: none;
   border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
+  background: var(--surface);
+  border: 1px solid var(--border);
 }
 
 .track-item {
@@ -257,7 +250,7 @@ h2 {
 }
 
 .track-item + .track-item {
-  border-top: 1px solid #e5e5ea;
+  border-top: 1px solid var(--border);
 }
 
 .track-name {
@@ -285,7 +278,7 @@ h2 {
 
 .empty-state {
   padding: 1rem 1.25rem;
-  border: 1px dashed #c7c7cc;
+  border: 1px dashed var(--border-strong);
   border-radius: 12px;
 }
 
@@ -294,7 +287,7 @@ h2 {
 }
 
 .play-button:focus-visible {
-  outline: 3px solid #1d1d1f;
+  outline: 3px solid var(--text);
   outline-offset: 3px;
 }
 

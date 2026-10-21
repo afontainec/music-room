@@ -66,7 +66,7 @@ test('Page lists all existing rooms by name', async ({ page, request }) => {
   const first = await createRoom(request);
   const second = await createRoom(request);
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Choose a room');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Where are you?');
   await expect(roomLink(page, first.name)).toBeVisible();
   await expect(roomLink(page, second.name)).toBeVisible();
 });
@@ -94,7 +94,7 @@ test("Clicking a room navigates the user to that room's page", async ({ page, re
 test('Page updates if rooms are added/removed (on reload)', async ({ page, request }) => {
   await asStaff(page);
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Choose a room');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Where are you?');
   const room = await createRoom(request);
   await expect(roomLink(page, room.name)).toHaveCount(0);
 
@@ -135,7 +135,7 @@ test.describe('Works on both desktop and mobile browsers', () => {
     const { defaultBrowserType: _, ...pixel5 } = devices['Pixel 5'];
     test.use(pixel5);
 
-    test('mobile: rooms stack in one column and open on tap', async ({ page, request }) => {
+    test('mobile: rooms sit two to a row and open on tap', async ({ page, request }) => {
       await asStaff(page);
       const room = await createRoom(request);
       await page.goto('/');
@@ -143,7 +143,8 @@ test.describe('Works on both desktop and mobile browsers', () => {
       await expect(link).toBeVisible();
       const box = (await link.boundingBox())!;
       const width = page.viewportSize()!.width;
-      expect(box.width).toBeGreaterThan(width * 0.8); // full-width card
+      expect(box.width).toBeGreaterThan(width * 0.35); // half-width card (two columns)
+      expect(box.width).toBeLessThan(width * 0.5);
       expect(box.height).toBeGreaterThanOrEqual(44); // touch target
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
       await link.tap();

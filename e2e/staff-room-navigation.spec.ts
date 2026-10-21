@@ -25,7 +25,7 @@ test('Clicking it opens the room selection page listing all rooms', async ({ pag
   await page.goto(`/rooms/${room.id}`);
   await backLink(page).click();
   await expect(page).toHaveURL('/');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Choose a room');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Where are you?');
   const list = page.getByRole('list', { name: 'Rooms' });
   await expect(list.getByRole('link', { name: room.name, exact: true })).toBeVisible();
   await expect(list.getByRole('link', { name: other.name, exact: true })).toBeVisible();

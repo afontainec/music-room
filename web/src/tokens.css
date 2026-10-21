@@ -1,0 +1,87 @@
+/* Design tokens from docs/design/visual-style.md (mirrors docs/design/mockups/tokens.css), shared
+   by every page. The Geist fonts are loaded in index.html. */
+:root {
+  color-scheme: dark;
+
+  --bg: #0d1110;
+  --surface: #151b19;
+  --surface-raised: #222a27;
+  --border: #222a27;
+  --border-strong: #2a3330;
+  --text: #edefee;
+  --text-muted: #98a39e;
+  --accent: #8fcba8;
+  /* Not in the spec: error and danger text, readable on --bg and --surface. */
+  --danger: #f2a09a;
+
+  --ring-1: #1b2220;
+  --ring-2: #26302c;
+  --ring-3: #36423d;
+
+  --font-sans: 'Geist', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+
+  --radius-card: 22px;
+  --radius-pill: 999px;
+  --touch: 44px;
+
+  /* Room palette, in order (server/src/palette.ts holds the same list). */
+  --room-moss: #7fbf95;
+  --room-sky: #7fa8e0;
+  --room-lavender: #a99be0;
+  --room-sand: #e0ae7f;
+  --room-coral: #e08a84;
+  --room-teal: #6cc4c0;
+  --room-gold: #d9c46a;
+  --room-rose: #d98fb8;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.title {
+  margin: 0;
+  font-size: 36px;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.body-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+a {
+  color: var(--accent);
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}

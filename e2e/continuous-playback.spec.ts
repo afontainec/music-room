@@ -125,7 +125,7 @@ test('User can leave the room to stop playback', async ({ page, request }) => {
 
   // The room page has no link to other rooms; the browser's back button leaves it in-app.
   await page.goBack();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Choose a room');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Where are you?');
   await expect(audio(page)).toHaveCount(0);
   const eventsAtLeave = (await mediaLog(page)).length;
 
