@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { login, LoginError } from '../api/auth';
 import { Link, navigate } from '../router';
+import './Staff.css';
 
 export function StaffLogin() {
   const [username, setUsername] = useState('');
@@ -22,15 +23,20 @@ export function StaffLogin() {
   };
 
   return (
-    <main className="page">
-      <Link to="/" className="back-link">
-        ← All rooms
-      </Link>
-      <h1>Staff login</h1>
-      <form className="login-form" onSubmit={onSubmit}>
-        <label>
+    <main className="staff">
+      <div className="staff-brand">
+        <span className="label">Music Rooms</span>
+        <Link to="/">← All rooms</Link>
+      </div>
+      <div className="staff-intro">
+        <h1 className="title">Staff login</h1>
+        <p className="body-text">Log in with the staff account to manage rooms and their tracks.</p>
+      </div>
+      <form className="staff-card" onSubmit={onSubmit}>
+        <label className="staff-field">
           Username
           <input
+            className="staff-input"
             name="username"
             autoComplete="username"
             required
@@ -38,9 +44,10 @@ export function StaffLogin() {
             onChange={(e) => setUsername(e.target.value)}
           />
         </label>
-        <label>
+        <label className="staff-field">
           Password
           <input
+            className="staff-input"
             name="password"
             type="password"
             autoComplete="current-password"
@@ -50,11 +57,11 @@ export function StaffLogin() {
           />
         </label>
         {error && (
-          <p className="form-error" role="alert">
+          <p className="staff-error" role="alert">
             {error}
           </p>
         )}
-        <button type="submit" disabled={submitting}>
+        <button type="submit" className="staff-button" disabled={submitting}>
           Log in
         </button>
       </form>
