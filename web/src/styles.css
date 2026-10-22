@@ -333,3 +333,87 @@ h2 {
     grid-template-columns: 1fr;
   }
 }
+
+/* Room colour swatches (components/ColourPicker.tsx): native radios, visually hidden but focusable,
+   so arrow keys move between colours; the checked one gets a ring and its name in full text colour. */
+.colour-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  border: none;
+}
+
+.colour-picker legend {
+  padding: 0;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.colour-swatch {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  min-width: 52px;
+  min-height: 44px; /* comfortable touch target on mobile */
+  padding: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.colour-swatch input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+}
+
+.colour-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--border-strong);
+}
+
+.colour-swatch input:checked ~ .colour-dot {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text);
+}
+
+.colour-swatch input:checked ~ .colour-name {
+  color: var(--text);
+}
+
+.colour-swatch input:focus-visible ~ .colour-dot {
+  outline: 2px solid var(--text);
+  outline-offset: 6px;
+}
+
+.colour-picker:disabled .colour-swatch {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.colour-form {
+  margin-bottom: 0.75rem;
+}
+
+.colour-form button {
+  min-height: 44px; /* comfortable touch target on mobile */
+  padding: 0.5rem 1.5rem;
+  border: none;
+  border-radius: 999px;
+  background: #0066cc;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.colour-form button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

@@ -35,14 +35,20 @@ export async function listAllRooms(): Promise<Room[]> {
   return (await check(await fetch('/api/rooms', { headers: authHeaders() }), 'GET /api/rooms')).json() as Promise<Room[]>;
 }
 
-/** Creates a room. Rejects with the server's message for an empty, too long or duplicate name. */
-export async function createRoom(name: string): Promise<Room> {
-  return (await sendJson('POST', '/api/rooms', { name })).json() as Promise<Room>;
+/** Creates a room, in `colour` when given (else the server picks its default). Rejects with the
+ * server's message for an empty, too long or duplicate name or a colour outside the palette. */
+export async function createRoom(name: string, colour?: string): Promise<Room> {
+  return (await sendJson('POST', '/api/rooms', { name, colour })).json() as Promise<Room>;
 }
 
 /** Renames a room. Rejects with the server's message for an empty, too long or duplicate name. */
 export async function renameRoom(id: string, name: string): Promise<Room> {
   return (await sendJson('PATCH', roomPath(id), { name })).json() as Promise<Room>;
+}
+
+/** Changes a room's colour, keeping its name. Rejects with the server's message for a colour outside the palette. */
+export async function setRoomColour(id: string, colour: string): Promise<Room> {
+  return (await sendJson('PATCH', roomPath(id), { colour })).json() as Promise<Room>;
 }
 
 /** Deletes a room with all its tracks. */

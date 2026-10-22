@@ -2,17 +2,22 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { createRoom, listAllRooms, SessionExpiredError } from '../api/admin';
 import { clearToken } from '../api/auth';
 import type { Room } from '../api/rooms';
+import { ColourPicker } from '../components/ColourPicker';
 import { useStaffSession } from '../hooks/useStaffSession';
+import { defaultColour } from '../palette';
 import { Link, navigate } from '../router';
 
 type RoomsState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; rooms: Room[] };
 
 // The staff area: every room, linking to its staff page, and a form to create one. The list is
-// fetched again after a room is created, so it always shows what visitors get.
+// fetched again after a room is created, so it always shows what visitors get. The form's colour
+// starts on the one the server would default to, computed from that list, until staff pick another.
 export function StaffArea() {
   const session = useStaffSession();
   const [rooms, setRooms] = useState<RoomsState>({ status: 'loading' });
   const [newName, setNewName] = useState('');
+  // The colour staff picked for the new room; null follows the default.
+  const [pickedColour, setPickedColour] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   // Only the latest request may update the list, so a slow earlier one cannot overwrite it.
@@ -38,14 +43,19 @@ export function StaffArea() {
     };
   }, [ready, loadRooms]);
 
+  // Without the list (still loading or failed) there is no default to show: the server assigns it.
+  const colour = pickedColour ?? (rooms.status === 'ready' ? defaultColour(rooms.rooms.map((r) => r.colour)) : null);
+
   const onCreate = async (e: FormEvent) => {
     e.preventDefault();
+    if (creating) return;
     if (!newName.trim()) return setCreateError('Enter a name for the room.');
     setCreating(true);
     setCreateError(null);
     try {
-      await createRoom(newName);
+      await createRoom(newName, colour ?? undefined);
       setNewName('');
+      setPickedColour(null);
     } catch (err) {
       if (err instanceof SessionExpiredError) return navigate('/admin/login');
       setCreateError(err instanceof Error && err.message ? err.message : 'Could not create the room. Please try again.');
@@ -73,14 +83,23 @@ export function StaffArea() {
         <>
           <p className="status">Signed in as {session.session.username}.</p>
           <h2>Rooms</h2>
-          <form className="inline-form" onSubmit={onCreate}>
-            <label>
-              New room name
-              <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={100} />
-            </label>
-            <button type="submit" disabled={creating}>
-              {creating ? 'Creating…' : 'Create room'}
-            </button>
+          <form onSubmit={onCreate}>
+            <ColourPicker
+              legend="New room colour"
+              name="new-room-colour"
+              value={colour}
+              onChange={setPickedColour}
+              disabled={creating}
+            />
+            <div className="inline-form">
+              <label>
+                New room name
+                <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={100} />
+              </label>
+              <button type="submit" disabled={creating}>
+                {creating ? 'Creating…' : 'Create room'}
+              </button>
+            </div>
           </form>
           {createError && (
             <p className="form-error" role="alert">
