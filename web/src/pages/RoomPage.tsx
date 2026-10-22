@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getRoom, NotFoundError, type RoomDetails } from '../api/rooms';
 import { AudioPlayer } from '../components/AudioPlayer';
+import { RoomRings } from '../components/RoomRings';
 import { useOptionalStaffSession } from '../hooks/useOptionalStaffSession';
 import { useSoundscapeLayer } from '../hooks/useSoundscapeLayer';
 import { Link } from '../router';
@@ -16,11 +17,13 @@ type RoomState =
 // long as the visitor stays; the visitor sees the layer's name but does not choose it. The page
 // links to no other room for visitors: they stay in the room their link opened. Staff with a valid
 // session get a link back to the room list; leaving unmounts the player, which stops the audio.
+// The rings in the centre take the room's colour.
 export function RoomPage({ id }: { id: string }) {
   const [room, setRoom] = useState<RoomState>({ status: 'loading' });
   const { state: layer, next } = useSoundscapeLayer(id);
   const staff = useOptionalStaffSession();
 
+  // The room is read once on entry; a staff edit (name, colour, tracks) shows after a reload.
   useEffect(() => {
     let active = true;
     setRoom({ status: 'loading' });
@@ -55,6 +58,7 @@ export function RoomPage({ id }: { id: string }) {
           <p className="status">
             {room.room.files.length === 1 ? '1 track' : `${room.room.files.length} tracks`}
           </p>
+          <RoomRings colour={room.room.colour} />
           {layer.status === 'loading' ? (
             <p className="status">Finding your layer…</p>
           ) : layer.status === 'ready' && layer.layer ? (
