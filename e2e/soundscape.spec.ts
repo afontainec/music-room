@@ -1,5 +1,14 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { audio, createRoomWithTracks, enterRoom, expectPlaying, layerName, playingTrackId, type Track } from './room';
+import {
+  audio,
+  createRoomWithTracks,
+  enterRoom,
+  expectPlaying,
+  layerName,
+  playingTrackId,
+  shownLayer,
+  type Track,
+} from './room';
 
 interface PlayerEvent {
   type: 'playing' | 'volumechange';
@@ -99,7 +108,7 @@ test('Opening a room assigns this device a layer, shows the layer name and fades
   await recordPlayer(page);
   await enterRoom(page, room.name);
   const id = await playingTrackId(page);
-  await expect(page.getByText(`Now playing: ${layerName(trackOf(room.tracks, id))}`)).toBeVisible();
+  await expect(shownLayer(page)).toHaveText(layerName(trackOf(room.tracks, id)));
   expect(await presentDevices(request, room.id), 'the server recorded the layer for this device').toEqual([
     expect.objectContaining({ trackId: id }),
   ]);
@@ -117,7 +126,7 @@ test('When the layer ends, the device requests the next layer and fades it in, a
   const layerRequests = captureRequests(page, '/layer');
   await enterRoom(page, room.name);
   const first = await playingTrackId(page);
-  await expect(page.getByText(`Now playing: ${layerName(trackOf(room.tracks, first))}`)).toBeVisible();
+  await expect(shownLayer(page)).toHaveText(layerName(trackOf(room.tracks, first)));
 
   await expect
     .poll(() => audio(page).evaluate((a: HTMLAudioElement) => a.dataset.trackId), { timeout: 15_000 })
@@ -126,7 +135,7 @@ test('When the layer ends, the device requests the next layer and fades it in, a
   expect(layerRequests.at(-1), 'the next layer was requested with the one that ended').toMatchObject({
     previousTrackId: first,
   });
-  await expect(page.getByText(`Now playing: ${layerName(trackOf(room.tracks, second))}`)).toBeVisible();
+  await expect(shownLayer(page)).toHaveText(layerName(trackOf(room.tracks, second)));
   await expectFadeIn(page, second);
 });
 
@@ -222,7 +231,7 @@ test('An e2e test with two browser contexts in the same room shows them playing 
     expect(ids[0], 'the two phones play different layers').not.toBe(ids[1]);
     for (const [i, page] of pages.entries()) {
       await expectPlaying(page);
-      await expect(page.getByText(`Now playing: ${layerName(trackOf(room.tracks, ids[i]!))}`)).toBeVisible();
+      await expect(shownLayer(page)).toHaveText(layerName(trackOf(room.tracks, ids[i]!)));
     }
     const present = await presentDevices(request, room.id);
     expect(present.map((d) => d.trackId).sort()).toEqual([...ids].sort());

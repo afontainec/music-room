@@ -100,6 +100,14 @@ test('Cards are single links, visible focus outline, ≥44px tap target', async 
 
   // Tab to the card: keyboard focus shows a 2px outline in the text colour.
   await expect(link).toHaveCSS('outline-style', 'none');
+  // Start from the card before it: the e2e database keeps every room the suite creates, so
+  // tabbing from the top of the page would take a press per room.
+  const links = cards(page);
+  const index = await links.evaluateAll(
+    (els, href) => els.findIndex((el) => el.getAttribute('href') === href),
+    `/rooms/${room.id}`,
+  );
+  if (index > 0) await links.nth(index - 1).focus();
   for (let i = 0; i < 100 && !(await link.evaluate((el) => el === document.activeElement)); i++) {
     await page.keyboard.press('Tab');
   }

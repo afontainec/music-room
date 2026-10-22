@@ -1,0 +1,146 @@
+/* Room page (/rooms/:id), the "Mono" direction of docs/design/visual-style.md: a centred column
+   with the back link and room name on top, the rings in the middle and the layer at the bottom. */
+.room {
+  display: flex;
+  flex-direction: column;
+  max-width: 480px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 56px 24px 40px;
+}
+
+.room-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  min-height: var(--touch);
+}
+
+.room-back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--touch);
+  font-size: 15px;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.room-back:hover {
+  color: var(--text);
+}
+
+/* Without the back link (visitors) the name stays on the right, where staff see it. */
+.room-name {
+  min-width: 0;
+  margin: 0 0 0 auto;
+  font-weight: 400;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.room-message {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* The rings (components/RoomRings.tsx) fill the space between the top bar and the layer. The
+   outer three use the ring tokens; the inner ring, centre dot and glow the room's colour. */
+.room-visual {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 0;
+}
+
+.room-visual svg {
+  width: min(280px, 72vw);
+  height: auto;
+}
+
+.room-ring-1 {
+  stroke: var(--ring-1);
+}
+
+.room-ring-2 {
+  stroke: var(--ring-2);
+}
+
+.room-ring-3 {
+  stroke: var(--ring-3);
+}
+
+.room-ring-inner {
+  stroke: var(--room-colour);
+}
+
+.room-ring-dot {
+  fill: var(--room-colour);
+}
+
+.room-glow stop {
+  stop-color: var(--room-colour);
+}
+
+/* A slow pulse of the inner ring, only for visitors who have not asked for reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .room-ring-inner {
+    animation: room-ring-pulse 4s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes room-ring-pulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.45;
+  }
+}
+
+.player {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  /* The space the mute button and volume slider will take (40px gap, 44px row); they belong to
+     the volume controls feature, so it stays empty until then. */
+  margin-bottom: 84px;
+}
+
+.room-layer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.layer-name {
+  margin: 0;
+  font-size: 48px;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.play-button {
+  width: 100%;
+  height: 52px;
+  padding: 0 24px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--text);
+  color: var(--bg);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.play-button:hover {
+  background: #fff;
+}

@@ -41,6 +41,9 @@ export async function enterRoom(page: Page, name: string) {
 
 export const audio = (page: Page) => page.locator('audio');
 
+/** The layer name the room page shows under "Your layer". */
+export const shownLayer = (page: Page) => page.locator('.layer-name');
+
 // Under Playwright the browser's own autoplay block is unreliable: Playwright's scripted page
 // access counts as user activation, so play() may or may not be allowed on a fresh page load.
 // This applies the policy deterministically: play() is rejected until a real input event.

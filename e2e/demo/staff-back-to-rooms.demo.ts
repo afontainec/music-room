@@ -21,7 +21,7 @@ test('Staff get a back button inside a room; visitors never see it', async ({ pa
   await page.goto(`/rooms/${ids[0]}`);
   await caption(page, 'A visitor opens their room from its link: no way to other rooms');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(forest);
-  await expect(page.getByRole('link', { name: '← All rooms' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Rooms', exact: true })).toHaveCount(0);
 
   await page.goto('/admin/login');
   await caption(page, 'Staff log in');
@@ -31,8 +31,8 @@ test('Staff get a back button inside a room; visitors never see it', async ({ pa
   await expect(page).toHaveURL('/admin');
 
   await page.goto(`/rooms/${ids[0]}`);
-  await caption(page, 'In the same room, staff now see "← All rooms"');
-  const back = page.getByRole('link', { name: '← All rooms' });
+  await caption(page, 'In the same room, staff now see "← Rooms"');
+  const back = page.getByRole('link', { name: 'Rooms', exact: true });
   await expect(back).toBeVisible();
 
   await caption(page, 'Clicking it goes back to every room, and the music stops');

@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test';
 import { STAFF } from '../admin';
 import { silentMp3 } from '../mp3';
+import { expectPlaying, shownLayer } from '../room';
 import { caption, click, test, typeInto } from './screencast';
 
 test('Staff build a forest soundscape and a visitor hears one of its layers', async ({ page }) => {
@@ -34,9 +35,8 @@ test('Staff build a forest soundscape and a visitor hears one of its layers', as
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(room);
 
   await caption(page, 'Their device is given one layer, which fades in');
-  const nowPlaying = page.locator('.now-playing');
-  await expect(nowPlaying).toContainText('Now playing', { timeout: 15_000 });
-  const mine = (await nowPlaying.locator('strong').textContent())!.trim();
+  await expectPlaying(page);
+  const mine = (await shownLayer(page).textContent())!.trim();
 
   // A second device joining now: the server hands it a different layer than this one.
   const roomId = new URL(page.url()).pathname.split('/').pop()!;

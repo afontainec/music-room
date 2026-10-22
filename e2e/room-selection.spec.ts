@@ -44,9 +44,9 @@ test('Public visitors see no navigation to other rooms while in a room', async (
   });
   await page.goto(`/rooms/${room.id}`);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(room.name);
-  await expect(page.getByText('1 track', { exact: true })).toBeVisible();
+  await expect(page.locator('.layer-name')).toHaveText('one');
   await expect(page.getByRole('link')).toHaveCount(0);
-  await expect(page.getByText('All rooms')).toHaveCount(0);
+  await expect(page.getByText('Rooms', { exact: true })).toHaveCount(0);
 });
 
 test('Opening a room URL directly as a visitor still works and refresh reopens the same room', async ({
@@ -82,7 +82,7 @@ test("Clicking a room navigates the user to that room's page", async ({ page, re
   await roomLink(page, room.name).click();
   await expect(page).toHaveURL(`/rooms/${room.id}`);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(room.name);
-  await expect(page.getByText('1 track', { exact: true })).toBeVisible();
+  await expect(page.locator('.layer-name')).toHaveText('one');
   // The room page also loads directly (server falls back to the SPA); staff go back with the browser.
   await page.reload();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(room.name);

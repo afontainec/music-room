@@ -1,4 +1,4 @@
-/* Pages not yet restyled to docs/design/visual-style.md (room page, staff area): the old layout
+/* Pages not yet restyled to docs/design/visual-style.md (the staff area): the old layout
    on the shared dark tokens (tokens.css), so they stay readable until their own restyle. */
 
 .page {
@@ -49,72 +49,6 @@ h1 {
   margin-bottom: 1rem;
   color: var(--accent);
   text-decoration: none;
-}
-
-/* The room page's rings (components/RoomRings.tsx): the outer three in the ring tokens, the inner
-   ring, centre dot and glow in the room's colour. */
-.room-visual {
-  display: flex;
-  justify-content: center;
-  margin: 1.5rem 0;
-}
-
-.room-visual svg {
-  width: min(280px, 72vw);
-  height: auto;
-}
-
-.room-ring-1 {
-  stroke: var(--ring-1);
-}
-
-.room-ring-2 {
-  stroke: var(--ring-2);
-}
-
-.room-ring-3 {
-  stroke: var(--ring-3);
-}
-
-.room-ring-inner {
-  stroke: var(--room-colour);
-}
-
-.room-ring-dot {
-  fill: var(--room-colour);
-}
-
-.room-glow stop {
-  stop-color: var(--room-colour);
-}
-
-.player {
-  margin-top: 1.5rem;
-  padding: 1rem 1.25rem;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-}
-
-.now-playing {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.play-button {
-  display: block;
-  width: 100%;
-  min-height: 56px; /* prominent, and well above the 44px touch target on mobile */
-  margin-top: 1rem;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 999px;
-  background: #0066cc;
-  color: #fff;
-  font: inherit;
-  font-size: 1.25rem;
-  font-weight: 700;
-  cursor: pointer;
 }
 
 .login-form {
@@ -317,15 +251,6 @@ h2 {
   padding: 1rem 1.25rem;
   border: 1px dashed var(--border-strong);
   border-radius: 12px;
-}
-
-.play-button:hover {
-  background: #0052a3;
-}
-
-.play-button:focus-visible {
-  outline: 3px solid var(--text);
-  outline-offset: 3px;
 }
 
 @media (max-width: 480px) {
