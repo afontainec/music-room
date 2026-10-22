@@ -15,6 +15,8 @@ interface Props {
   /** Shown with the title on the lock screen and in the system media controls. */
   album?: string;
   onEnded?: () => void;
+  /** Called once per track started, when it first plays (not on resuming after a pause). */
+  onStarted?: () => void;
 }
 
 // Tries to autoplay; browsers that block it (Safari and iOS especially) leave the track paused
@@ -23,7 +25,7 @@ interface Props {
 // in the click handler so the gesture counts; a native button also takes Enter and Space.
 // Following tracks reuse the same audio element, which the browser lets play once one has, and
 // which keeps playing with the screen locked or the tab hidden where the browser allows.
-export function AudioPlayer({ src, title, trackId, turn, album, onEnded }: Props) {
+export function AudioPlayer({ src, title, trackId, turn, album, onEnded, onStarted }: Props) {
   const audio = useRef<HTMLAudioElement>(null);
   const [status, setStatus] = useState<Status>('starting');
   // False only after the visitor paused from the lock screen or media keys, so returning to
@@ -63,6 +65,7 @@ export function AudioPlayer({ src, title, trackId, turn, album, onEnded }: Props
     };
     fade.current = { turn, timer: window.setInterval(step, FADE_STEP_MS) };
     step();
+    onStarted?.();
   };
 
   // Leaving the room stops playback, even where a detached element would keep playing.

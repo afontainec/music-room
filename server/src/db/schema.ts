@@ -37,6 +37,28 @@ export const roomFiles = pgTable(
   ],
 );
 
+// Room visits and track plays for analytics. Timestamps are set by the database, not the client.
+export const usageEvents = pgTable(
+  'usage_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    type: text('type', { enum: ['visit', 'play'] }).notNull(),
+    roomId: uuid('room_id')
+      .notNull()
+      .references(() => rooms.id, { onDelete: 'cascade' }),
+    // Set for plays; cleared when the track is removed, so its plays still count for the room.
+    trackId: uuid('track_id').references(() => roomFiles.id, { onDelete: 'set null' }),
+    // The tab's device id (one per tab session), so a report can count distinct visitors.
+    deviceId: text('device_id').notNull(),
+    occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('usage_events_room_id_occurred_at_idx').on(t.roomId, t.occurredAt),
+    index('usage_events_track_id_idx').on(t.trackId),
+    check('usage_events_type_check', sql`${t.type} in ('visit', 'play')`),
+  ],
+);
+
 export type Room = typeof rooms.$inferSelect;
 export type NewRoom = typeof rooms.$inferInsert;
 export type RoomFile = typeof roomFiles.$inferSelect;

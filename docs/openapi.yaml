@@ -406,6 +406,130 @@ paths:
                 properties:
                   error:
                     type: string
+  /api/rooms/{id}/visits:
+    post:
+      summary: Record a visit to the room
+      description: >-
+        Sent by the room page each time a visitor enters the room (counted per page entry, not
+        deduplicated; the report also counts distinct devices). The server sets the timestamp.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deviceId]
+              properties:
+                deviceId:
+                  type: string
+                  pattern: '^[A-Za-z0-9_-]{1,64}$'
+      responses:
+        '204':
+          description: Recorded
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /api/rooms/{id}/plays:
+    post:
+      summary: Record a play of one of the room's tracks
+      description: >-
+        Sent by the room page when a layer starts playing (not when it is only assigned, nor on
+        resuming after a pause). The server sets the timestamp.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deviceId, trackId]
+              properties:
+                deviceId:
+                  type: string
+                  pattern: '^[A-Za-z0-9_-]{1,64}$'
+                trackId:
+                  type: string
+                  format: uuid
+      responses:
+        '204':
+          description: Recorded
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          description: Unknown room, or the track is not in this room
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/analytics/rooms:
+    get:
+      summary: Visit and play counts per room (staff only)
+      description: >-
+        Every room, ordered by name, with its counts in the range; rooms without events in it
+        show zeros. Times are UTC. `from` is inclusive and `to` exclusive, except that a date-only
+        `to` includes that whole day, so `from=2026-10-01&to=2026-10-31` covers October. Either
+        bound may be left out. Deleting a room deletes its events; plays of a removed track still
+        count for its room.
+      security:
+        - staffToken: []
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+          description: A date (`YYYY-MM-DD`, UTC midnight) or a date-time with an offset
+          example: '2026-10-01'
+        - name: to
+          in: query
+          schema:
+            type: string
+          description: A date (`YYYY-MM-DD`, through the end of that UTC day) or a date-time with an offset
+          example: '2026-10-31'
+      responses:
+        '200':
+          description: The report
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [from, to, rooms]
+                properties:
+                  from:
+                    type: string
+                    format: date-time
+                    nullable: true
+                    description: The applied lower bound (inclusive), in UTC
+                  to:
+                    type: string
+                    format: date-time
+                    nullable: true
+                    description: The applied upper bound (exclusive), in UTC
+                  rooms:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RoomUsage'
+        '400':
+          description: An invalid bound, or `from` not before `to`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/rooms/{roomId}/files:
     parameters:
       - name: roomId
@@ -653,3 +777,23 @@ components:
         url:
           type: string
           description: Playable path, `/api/files/{id}`
+    RoomUsage:
+      type: object
+      required: [id, name, colour, visits, visitors, plays]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        colour:
+          $ref: '#/components/schemas/RoomColour'
+        visits:
+          type: integer
+          description: Room entries in the range
+        visitors:
+          type: integer
+          description: Distinct devices (browser tabs) among those visits
+        plays:
+          type: integer
+          description: Tracks started in the range

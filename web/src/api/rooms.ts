@@ -81,6 +81,25 @@ export const requestLayer = (roomId: string, deviceId: string, previousTrackId: 
 export const sendHeartbeat = (roomId: string, deviceId: string, trackId: string | null) =>
   postJson<unknown>(`${roomPath(roomId)}/presence/heartbeat`, { deviceId, trackId }).then(() => {});
 
+// Analytics events are fire-and-forget: a lost event must never interrupt listening.
+const recordEvent = (url: string, body: unknown) =>
+  fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+    keepalive: true,
+  }).catch(() => {});
+
+/** Counts one visit to the room (the server sets the timestamp). */
+export const recordVisit = (roomId: string, deviceId: string) => {
+  recordEvent(`${roomPath(roomId)}/visits`, { deviceId });
+};
+
+/** Counts one play of a track in the room, sent when the track starts playing. */
+export const recordPlay = (roomId: string, deviceId: string, trackId: string) => {
+  recordEvent(`${roomPath(roomId)}/plays`, { deviceId, trackId });
+};
+
 /** Frees the device's layer right away. `keepalive` lets the request outlive a closing page;
  * failures are ignored, since the server drops the device 30 s after its last heartbeat anyway. */
 export function releaseLayer(roomId: string, deviceId: string) {

@@ -32,7 +32,7 @@ function LayerStatus({ children }: { children: ReactNode }) {
 // rings in the room's colour, and the layer's name in large light type.
 export function RoomPage({ id }: { id: string }) {
   const [room, setRoom] = useState<RoomState>({ status: 'loading' });
-  const { state: layer, next } = useSoundscapeLayer(id);
+  const { state: layer, next, played } = useSoundscapeLayer(id);
   const staff = useOptionalStaffSession();
 
   // The room is read once on entry; a staff edit (name, colour, tracks) shows after a reload.
@@ -99,6 +99,7 @@ export function RoomPage({ id }: { id: string }) {
               turn={layer.turn}
               album={room.room.name}
               onEnded={next}
+              onStarted={() => played(layer.layer!.id)}
             />
           ) : (
             <LayerStatus>This room has no tracks yet.</LayerStatus>

@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { NotFoundError, releaseLayer, requestLayer, sendHeartbeat, type Layer } from '../api/rooms';
+import {
+  NotFoundError,
+  recordPlay,
+  recordVisit,
+  releaseLayer,
+  requestLayer,
+  sendHeartbeat,
+  type Layer,
+} from '../api/rooms';
 
 // A third of the server's 30 s presence timeout, so one lost heartbeat does not drop the device.
 export const HEARTBEAT_MS = 10_000;
@@ -59,7 +67,8 @@ const latestSession = new Map<string, number>();
 
 // Gets this device its layer in the room and the next one each time `next()` is called (when
 // the layer ends), keeps the device present with heartbeats while the page is open, and
-// releases the layer when the visitor leaves or the page closes. The server picks every
+// releases the layer when the visitor leaves or the page closes. It also records the visit and,
+// through `played`, each play for the room's analytics. The server picks every
 // layer, since only it knows what the other devices are playing.
 export function useSoundscapeLayer(roomId: string) {
   const [state, setState] = useState<LayerState>({ status: 'loading' });
@@ -124,6 +133,8 @@ export function useSoundscapeLayer(roomId: string) {
     const pageshow = (e: PageTransitionEvent) => e.persisted && resume(); // back from bfcache
     const pagehide = () => releaseLayer(roomId, device);
 
+    // Each entry into the room counts as one visit for the owner's analytics.
+    recordVisit(roomId, device);
     assign(readLastPlayed(roomId));
     const interval = window.setInterval(heartbeat, HEARTBEAT_MS);
     document.addEventListener('visibilitychange', resume);
@@ -144,5 +155,8 @@ export function useSoundscapeLayer(roomId: string) {
   }, [roomId]);
 
   const next = useCallback(() => nextRef.current(), []);
-  return { state, next };
+  // Called once per layer when it starts playing (not when it is merely assigned, since autoplay
+  // may be blocked), so analytics count plays that were heard.
+  const played = useCallback((trackId: string) => recordPlay(roomId, deviceId(), trackId), [roomId]);
+  return { state, next, played };
 }

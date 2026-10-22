@@ -4,6 +4,7 @@ import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
 import type { Auth } from './auth.js';
 import type { Db } from './db/client.js';
+import { analyticsRoutes } from './routes/analytics.js';
 import { authRoutes } from './routes/auth.js';
 import { fileRoutes } from './routes/files.js';
 import { helloRoutes } from './routes/hello.js';
@@ -40,6 +41,7 @@ export async function buildApp(deps?: AppDeps) {
     await app.register(fileRoutes, { ...deps, requireAdmin });
     await app.register(presenceRoutes, { db: deps.db, presence });
     await app.register(layerRoutes, { db: deps.db, presence });
+    await app.register(analyticsRoutes, { db: deps.db, requireAdmin });
   }
 
   // Single Railway service: serve the built SPA from the same Node process.

@@ -6,7 +6,7 @@ import type { Db } from './client.js';
 import { migrateDown, migrateUp } from './migrate.js';
 import { migrations } from './migrations/index.js';
 import * as schema from './schema.js';
-import { roomFiles, rooms } from './schema.js';
+import { roomFiles, rooms, usageEvents } from './schema.js';
 
 // In-memory Postgres, so these run without a database service.
 let client: PGlite;
@@ -45,9 +45,9 @@ const FOREIGN_KEY_VIOLATION = '23503';
 const CHECK_VIOLATION = '23514';
 
 describe('migrations run up/down cleanly', () => {
-  it('up creates rooms and room_files', async () => {
+  it('up creates rooms, room_files and usage_events', async () => {
     expect(await migrateUp(db)).toEqual(migrations.map((m) => m.name));
-    expect(await tableNames()).toEqual(['room_files', 'rooms', 'schema_migrations']);
+    expect(await tableNames()).toEqual(['room_files', 'rooms', 'schema_migrations', 'usage_events']);
   });
 
   it('up is a no-op when everything is applied', async () => {
@@ -66,7 +66,7 @@ describe('migrations run up/down cleanly', () => {
     await migrateUp(db);
     await migrateDown(db, migrations.length);
     expect(await migrateUp(db)).toEqual(migrations.map((m) => m.name));
-    expect(await tableNames()).toEqual(['room_files', 'rooms', 'schema_migrations']);
+    expect(await tableNames()).toEqual(['room_files', 'rooms', 'schema_migrations', 'usage_events']);
   });
 
   it('a failing migration leaves nothing behind', async () => {
@@ -156,5 +156,53 @@ describe('room_files', () => {
     await db.insert(roomFiles).values({ roomId, source: 'url', fileRef: 'https://example.com/a.mp3' });
     await db.delete(rooms).where(eq(rooms.id, roomId));
     expect(await db.select().from(roomFiles)).toHaveLength(0);
+  });
+});
+
+describe('usage_events', () => {
+  let roomId: string;
+  let trackId: string;
+
+  beforeEach(async () => {
+    await migrateUp(db);
+    [{ id: roomId }] = await db.insert(rooms).values({ name: 'Lobby' }).returning();
+    [{ id: trackId }] = await db
+      .insert(roomFiles)
+      .values({ roomId, source: 'url', fileRef: 'https://example.com/a.mp3' })
+      .returning();
+  });
+
+  it('records a visit and a play with a timestamp', async () => {
+    const events = await db
+      .insert(usageEvents)
+      .values([
+        { type: 'visit', roomId, deviceId: 'phone-1' },
+        { type: 'play', roomId, trackId, deviceId: 'phone-1' },
+      ])
+      .returning();
+    expect(events).toMatchObject([
+      { type: 'visit', roomId, trackId: null, deviceId: 'phone-1' },
+      { type: 'play', roomId, trackId, deviceId: 'phone-1' },
+    ]);
+    for (const e of events) expect(e.occurredAt).toBeInstanceOf(Date);
+  });
+
+  it('rejects an unknown type', async () => {
+    const insert = db.execute(
+      sql`insert into usage_events (type, room_id, device_id) values ('skip', ${roomId}, 'phone-1')`,
+    );
+    expect(await sqlState(insert)).toBe(CHECK_VIOLATION);
+  });
+
+  it('keeps a removed track’s plays, without the track', async () => {
+    await db.insert(usageEvents).values({ type: 'play', roomId, trackId, deviceId: 'phone-1' });
+    await db.delete(roomFiles).where(eq(roomFiles.id, trackId));
+    expect(await db.select().from(usageEvents)).toMatchObject([{ type: 'play', roomId, trackId: null }]);
+  });
+
+  it('is deleted with its room', async () => {
+    await db.insert(usageEvents).values({ type: 'visit', roomId, deviceId: 'phone-1' });
+    await db.delete(rooms).where(eq(rooms.id, roomId));
+    expect(await db.select().from(usageEvents)).toHaveLength(0);
   });
 });
