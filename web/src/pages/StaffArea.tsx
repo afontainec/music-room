@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { createRoom, listAllRooms, SessionExpiredError } from '../api/admin';
 import { clearToken } from '../api/auth';
 import type { Room } from '../api/rooms';
 import { ColourPicker } from '../components/ColourPicker';
 import { useStaffSession } from '../hooks/useStaffSession';
-import { defaultColour } from '../palette';
+import { colourName, defaultColour } from '../palette';
 import { Link, navigate } from '../router';
+import './Staff.css';
 
 type RoomsState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; rooms: Room[] };
 
@@ -71,62 +72,96 @@ export function StaffArea() {
   };
 
   return (
-    <main className="page">
-      <h1>Staff area</h1>
-      {session.status === 'loading' && <p className="status">Checking your session…</p>}
-      {session.status === 'error' && (
-        <p className="status" role="alert">
-          Could not check your session. Please try again later.
-        </p>
-      )}
-      {session.status === 'ready' && (
-        <>
-          <p className="status">Signed in as {session.session.username}.</p>
-          <h2>Rooms</h2>
-          <form onSubmit={onCreate}>
-            <ColourPicker
-              legend="New room colour"
-              name="new-room-colour"
-              value={colour}
-              onChange={setPickedColour}
-              disabled={creating}
-            />
-            <div className="inline-form">
-              <label>
-                New room name
-                <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={100} />
-              </label>
-              <button type="submit" disabled={creating}>
-                {creating ? 'Creating…' : 'Create room'}
-              </button>
-            </div>
-          </form>
-          {createError && (
-            <p className="form-error" role="alert">
-              {createError}
-            </p>
-          )}
-          {rooms.status === 'loading' && <p className="status">Loading rooms…</p>}
-          {rooms.status === 'error' && (
-            <p className="status" role="alert">
-              Could not load rooms. Please try again later.
-            </p>
-          )}
-          {rooms.status === 'ready' && rooms.rooms.length === 0 && <p className="status">No rooms yet.</p>}
-          {rooms.status === 'ready' && rooms.rooms.length > 0 && (
-            <ul className="room-list" aria-label="Rooms">
-              {rooms.rooms.map((room) => (
-                <li key={room.id}>
-                  <Link to={`/admin/rooms/${room.id}`} className="room-card">
-                    {room.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-          <button type="button" className="secondary-button log-out" onClick={logOut}>
+    <main className="staff">
+      <div className="staff-brand">
+        <span className="label">Music Rooms</span>
+        {session.status === 'ready' && (
+          <button type="button" className="staff-button staff-button-secondary" onClick={logOut}>
             Log out
           </button>
+        )}
+      </div>
+      <div className="staff-intro">
+        <h1 className="title">Staff area</h1>
+        {session.status === 'loading' && <p className="body-text">Checking your session…</p>}
+        {session.status === 'error' && (
+          <p className="body-text" role="alert">
+            Could not check your session. Please try again later.
+          </p>
+        )}
+        {session.status === 'ready' && <p className="body-text">Signed in as {session.session.username}.</p>}
+      </div>
+      {session.status === 'ready' && (
+        <>
+          <section className="staff-section" aria-labelledby="staff-new-room-title">
+            <h2 className="staff-section-title" id="staff-new-room-title">
+              New room
+            </h2>
+            <form className="staff-card" onSubmit={onCreate}>
+              <ColourPicker
+                legend="New room colour"
+                name="new-room-colour"
+                value={colour}
+                onChange={setPickedColour}
+                disabled={creating}
+              />
+              <div className="staff-row">
+                <label className="staff-field">
+                  New room name
+                  <input
+                    className="staff-input"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    maxLength={100}
+                  />
+                </label>
+                <button type="submit" className="staff-button" disabled={creating}>
+                  {creating ? 'Creating…' : 'Create room'}
+                </button>
+              </div>
+              {createError && (
+                <p className="staff-error" role="alert">
+                  {createError}
+                </p>
+              )}
+            </form>
+          </section>
+          <section className="staff-section" aria-labelledby="staff-rooms-title">
+            <h2 className="staff-section-title" id="staff-rooms-title">
+              Rooms
+            </h2>
+            {rooms.status === 'loading' && <p className="body-text">Loading rooms…</p>}
+            {rooms.status === 'error' && (
+              <p className="body-text" role="alert">
+                Could not load rooms. Please try again later.
+              </p>
+            )}
+            {rooms.status === 'ready' && rooms.rooms.length === 0 && <p className="body-text">No rooms yet.</p>}
+            {rooms.status === 'ready' && rooms.rooms.length > 0 && (
+              <ul className="staff-rooms" aria-label="Rooms">
+                {rooms.rooms.map((room) => (
+                  <li key={room.id}>
+                    {/* Named by the room alone; its colour's name is the description. */}
+                    <Link
+                      to={`/admin/rooms/${room.id}`}
+                      className="staff-room"
+                      style={{ '--room-colour': room.colour } as CSSProperties}
+                      aria-labelledby={`staff-room-${room.id}-name`}
+                      aria-describedby={`staff-room-${room.id}-colour`}
+                    >
+                      <span className="staff-room-dot" aria-hidden="true" />
+                      <span className="staff-room-name" id={`staff-room-${room.id}-name`}>
+                        {room.name}
+                      </span>
+                      <span className="staff-room-colour" id={`staff-room-${room.id}-colour`}>
+                        {colourName(room.colour)}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         </>
       )}
     </main>
