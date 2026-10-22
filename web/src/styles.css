@@ -51,6 +51,43 @@ h1 {
   text-decoration: none;
 }
 
+/* The room page's rings (components/RoomRings.tsx): the outer three in the ring tokens, the inner
+   ring, centre dot and glow in the room's colour. */
+.room-visual {
+  display: flex;
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+
+.room-visual svg {
+  width: min(280px, 72vw);
+  height: auto;
+}
+
+.room-ring-1 {
+  stroke: var(--ring-1);
+}
+
+.room-ring-2 {
+  stroke: var(--ring-2);
+}
+
+.room-ring-3 {
+  stroke: var(--ring-3);
+}
+
+.room-ring-inner {
+  stroke: var(--room-colour);
+}
+
+.room-ring-dot {
+  fill: var(--room-colour);
+}
+
+.room-glow stop {
+  stop-color: var(--room-colour);
+}
+
 .player {
   margin-top: 1.5rem;
   padding: 1rem 1.25rem;

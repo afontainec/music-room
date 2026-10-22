@@ -1,147 +1,101 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { ROOM_PALETTE, defaultColour } from '../server/src/palette';
+import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test';
 import { adminHeaders, asStaff } from './admin';
 
+// Each room's colour (docs/design/visual-style.md) on the room selection cards and the room page.
+
 const unique = () => `e2e-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-const NAMES = ['Moss', 'Sky', 'Lavender', 'Sand', 'Coral', 'Teal', 'Gold', 'Rose'];
 
-const newRoomColours = (page: Page) => page.getByRole('group', { name: 'New room colour' });
-const roomColours = (page: Page) => page.getByRole('group', { name: 'Room colour' });
-const checkedValue = (group: ReturnType<typeof newRoomColours>) => group.getByRole('radio', { checked: true }).getAttribute('value');
+/** '#7fa8e0' → 'rgb(127, 168, 224)', the form computed styles report. */
+const rgb = (hex: string) => {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return `rgb(${r}, ${g}, ${b})`;
+};
 
-async function allRooms(request: APIRequestContext) {
-  const res = await request.get('/api/rooms', { headers: await adminHeaders(request) });
-  return (await res.json()) as { id: string; name: string; colour: string }[];
-}
-
-async function createViaApi(request: APIRequestContext, colour?: string) {
-  const res = await request.post('/api/rooms', { headers: await adminHeaders(request), data: { name: unique(), colour } });
+async function createRoom(request: APIRequestContext, colour?: string) {
+  const headers = await adminHeaders(request);
+  const res = await request.post('/api/rooms', { headers, data: { name: unique(), colour } });
   expect(res.status()).toBe(201);
   return (await res.json()) as { id: string; name: string; colour: string };
 }
 
-async function openStaffArea(page: Page) {
-  await asStaff(page);
-  await page.goto('/admin');
-  await expect(page.getByRole('list', { name: 'Rooms' })).toBeVisible();
+async function setColour(request: APIRequestContext, id: string, colour: string) {
+  const res = await request.patch(`/api/rooms/${id}`, { headers: await adminHeaders(request), data: { colour } });
+  expect(res.status()).toBe(200);
 }
 
-async function createInUi(page: Page, name: string) {
-  await page.getByLabel('New room name').fill(name);
-  await page.getByRole('button', { name: 'Create room' }).click();
-  await expect(page.getByRole('list', { name: 'Rooms' }).getByRole('link', { name, exact: true })).toBeVisible();
-  return (await allRooms(page.request)).find((r) => r.name === name)!;
+/** The colour the API returns for a room in the list: stored, or derived from its id. */
+async function listedColour(request: APIRequestContext, id: string) {
+  const res = await request.get('/api/rooms', { headers: await adminHeaders(request) });
+  const rooms = (await res.json()) as { id: string; colour: string }[];
+  return rooms.find((room) => room.id === id)!.colour;
 }
 
-test('The create-room form pre-selects the palette colour the API would default to, shown as palette swatches staff can override before saving', async ({
-  page,
-}) => {
-  await createViaApi(page.request);
-  // Other tests create rooms in parallel, so compare against a list fetched right after the page's.
-  await expect(async () => {
-    await openStaffArea(page);
-    const shown = await checkedValue(newRoomColours(page));
-    expect(shown).toBe(defaultColour((await allRooms(page.request)).map((r) => r.colour)));
-  }).toPass();
+const cardDot = (page: Page, name: string) =>
+  page.getByRole('link', { name, exact: true }).locator('.room-tile-dot');
 
-  // Kept as is, the room gets the pre-selected colour.
-  const shown = await checkedValue(newRoomColours(page));
-  const kept = await createInUi(page, unique());
-  expect(kept.colour).toBe(shown);
+const svgStyle = (locator: Locator, property: string) =>
+  locator.evaluate((el, p) => getComputedStyle(el).getPropertyValue(p), property);
 
-  // Overridden, it gets the chosen one; the form then follows the default again.
-  const coral = newRoomColours(page).getByRole('radio', { name: 'Coral' });
-  await coral.check();
-  await expect(coral).toBeChecked();
-  const overridden = await createInUi(page, unique());
-  expect(overridden.colour).toBe(ROOM_PALETTE[4]);
-  await expect(async () => {
-    await page.reload();
-    const after = await checkedValue(newRoomColours(page));
-    expect(after).toBe(defaultColour((await allRooms(page.request)).map((r) => r.colour)));
-  }).toPass();
-});
+async function expectRingsIn(page: Page, colour: string) {
+  const visual = page.locator('.room-visual');
+  await expect(visual.locator('.room-ring-inner')).toHaveCSS('stroke', rgb(colour));
+  await expect(visual.locator('.room-ring-dot')).toHaveCSS('fill', rgb(colour));
+  const stops = visual.locator('.room-glow stop');
+  await expect(stops).toHaveCount(2);
+  for (const stop of await stops.all()) await expect(stop).toHaveCSS('stop-color', rgb(colour));
+}
 
-test("The room's staff page shows the current colour and lets staff change it to any palette colour via PATCH /api/rooms/:id", async ({
-  page,
-}) => {
-  const room = await createViaApi(page.request, ROOM_PALETTE[1]);
+test("Room selection cards show each room's dot and glow in its stored/derived colour", async ({ page, request }) => {
+  const sky = await createRoom(request, '#7fa8e0');
+  const coral = await createRoom(request, '#e08a84');
+  const assigned = await createRoom(request); // the server picks its colour
   await asStaff(page);
-  await page.goto(`/admin/rooms/${room.id}`);
-  await expect(page.getByText('Current colour: Sky')).toBeVisible();
-  await expect(roomColours(page).getByRole('radio', { name: 'Sky' })).toBeChecked();
-  const save = page.getByRole('button', { name: 'Save colour' });
-  await expect(save).toBeDisabled();
+  await page.goto('/');
 
-  for (const [i, name] of NAMES.entries()) {
-    if (i === 1) continue;
-    await roomColours(page).getByRole('radio', { name }).check();
-    const patch = page.waitForRequest((req) => req.method() === 'PATCH' && req.url().endsWith(`/api/rooms/${room.id}`));
-    await save.click();
-    expect((await patch).postDataJSON()).toEqual({ colour: ROOM_PALETTE[i] });
-    await expect(page.getByText(`Current colour: ${name}`)).toBeVisible();
-    await expect(save).toBeDisabled();
+  for (const room of [sky, coral, assigned]) {
+    const colour = await listedColour(request, room.id);
+    expect(colour).toBe(room.colour);
+    const dot = cardDot(page, room.name);
+    await expect(dot).toHaveCSS('background-color', rgb(colour));
+    await expect(dot).toHaveCSS('box-shadow', `${rgb(colour)} 0px 0px 24px 0px`);
   }
+});
 
-  // Saved: the public room has the new colour and keeps its name, and a reload shows it.
-  const saved = (await (await page.request.get(`/api/rooms/${room.id}`)).json()) as { name: string; colour: string };
-  expect(saved).toMatchObject({ name: room.name, colour: ROOM_PALETTE[7] });
+test("The room page's inner ring, centre dot and glow use the room's colour", async ({ page, request }) => {
+  const lavender = await createRoom(request, '#a99be0');
+  const gold = await createRoom(request, '#d9c46a');
+
+  for (const room of [lavender, gold]) {
+    await page.goto(`/rooms/${room.id}`);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(room.name);
+    await expectRingsIn(page, room.colour);
+  }
+  // The three outer rings keep the ring tokens, whatever the room's colour.
+  const visual = page.locator('.room-visual');
+  await expect(visual.locator('.room-ring-1')).toHaveCSS('stroke', 'rgb(27, 34, 32)');
+  await expect(visual.locator('.room-ring-2')).toHaveCSS('stroke', 'rgb(38, 48, 44)');
+  await expect(visual.locator('.room-ring-3')).toHaveCSS('stroke', 'rgb(54, 66, 61)');
+  // Decoration only: the rings are hidden from assistive technology.
+  await expect(visual.locator('svg')).toHaveAttribute('aria-hidden', 'true');
+  expect(await svgStyle(visual.locator('svg'), 'width')).toBe('280px');
+});
+
+test('Changing a colour in the admin area shows up in the public app without a restart', async ({ page, request }) => {
+  const room = await createRoom(request, '#7fbf95');
+  await asStaff(page);
+  await page.goto('/');
+  await expect(cardDot(page, room.name)).toHaveCSS('background-color', rgb('#7fbf95'));
+
+  // The room list is read on every visit.
+  await setColour(request, room.id, '#6cc4c0');
   await page.reload();
-  await expect(page.getByText('Current colour: Rose')).toBeVisible();
-  await expect(roomColours(page).getByRole('radio', { name: 'Rose' })).toBeChecked();
-});
+  await expect(cardDot(page, room.name)).toHaveCSS('background-color', rgb('#6cc4c0'));
 
-test('Invalid/out-of-palette options are not offered in the UI', async ({ page }) => {
-  const room = await createViaApi(page.request);
-  await openStaffArea(page);
-  const offered = async (group: ReturnType<typeof newRoomColours>) => {
-    const radios = group.getByRole('radio');
-    await expect(radios).toHaveCount(ROOM_PALETTE.length);
-    const values = await radios.evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value));
-    expect(values).toEqual([...ROOM_PALETTE]);
-    for (const name of NAMES) await expect(group.getByRole('radio', { name })).toHaveCount(1);
-  };
-  await offered(newRoomColours(page));
-  await page.goto(`/admin/rooms/${room.id}`);
-  await offered(roomColours(page));
-});
-
-test('Actions are disabled while a request is in flight', async ({ page }) => {
-  const room = await createViaApi(page.request, ROOM_PALETTE[0]);
-  await openStaffArea(page);
-
-  // Hold the requests until the disabled state has been checked.
-  let releaseCreate!: () => void;
-  const createHeld = new Promise<void>((resolve) => (releaseCreate = resolve));
-  await page.route('**/api/rooms', async (route) => {
-    if (route.request().method() !== 'POST') return route.continue();
-    await createHeld;
-    await route.continue();
-  });
-  const name = unique();
-  await page.getByLabel('New room name').fill(name);
-  await page.getByRole('button', { name: 'Create room' }).click();
-  await expect(page.getByRole('button', { name: 'Creating…' })).toBeDisabled();
-  for (const radio of await newRoomColours(page).getByRole('radio').all()) await expect(radio).toBeDisabled();
-  releaseCreate();
-  await expect(page.getByRole('list', { name: 'Rooms' }).getByRole('link', { name, exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Create room' })).toBeEnabled();
-  await expect(newRoomColours(page).getByRole('radio').first()).toBeEnabled();
-
-  let releasePatch!: () => void;
-  const patchHeld = new Promise<void>((resolve) => (releasePatch = resolve));
-  await page.route(`**/api/rooms/${room.id}`, async (route) => {
-    if (route.request().method() !== 'PATCH') return route.continue();
-    await patchHeld;
-    await route.continue();
-  });
-  await page.goto(`/admin/rooms/${room.id}`);
-  await roomColours(page).getByRole('radio', { name: 'Gold' }).check();
-  await page.getByRole('button', { name: 'Save colour' }).click();
-  await expect(page.getByRole('button', { name: 'Saving…' })).toBeDisabled();
-  for (const radio of await roomColours(page).getByRole('radio').all()) await expect(radio).toBeDisabled();
-  releasePatch();
-  await expect(page.getByText('Current colour: Gold')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Save colour' })).toBeDisabled();
-  await expect(roomColours(page).getByRole('radio', { name: 'Gold' })).toBeEnabled();
+  // The room page shows the new colour after a reload, with the same server still running.
+  await page.getByRole('link', { name: room.name, exact: true }).click();
+  await expectRingsIn(page, '#6cc4c0');
+  await setColour(request, room.id, '#d98fb8');
+  await page.reload();
+  await expectRingsIn(page, '#d98fb8');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(room.name);
 });
