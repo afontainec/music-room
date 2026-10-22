@@ -1,5 +1,14 @@
 import { devices, expect, test } from '@playwright/test';
-import { audio, blockAutoplay, createRoomWithTracks, enterRoom, expectPlaying, layerName, playingTrackId } from './room';
+import {
+  audio,
+  blockAutoplay,
+  createRoomWithTracks,
+  enterRoom,
+  expectPlaying,
+  layerName,
+  playingTrackId,
+  shownLayer,
+} from './room';
 
 test("Entering a room triggers playback of a randomly selected mp3 from that room's list", async ({
   page,
@@ -10,7 +19,7 @@ test("Entering a room triggers playback of a randomly selected mp3 from that roo
   const id = await playingTrackId(page);
   const track = room.tracks.find((t) => t.id === id);
   expect(track, 'the playing track belongs to the room').toBeDefined();
-  await expect(page.getByText(`Now playing: ${layerName(track!)}`)).toBeVisible();
+  await expect(shownLayer(page)).toHaveText(layerName(track!));
 });
 
 test.describe('Playback starts automatically or via a single play button (browser permitting)', () => {

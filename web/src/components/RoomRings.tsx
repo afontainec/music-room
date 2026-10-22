@@ -2,7 +2,7 @@ import { useId, type CSSProperties } from 'react';
 
 // The room page's centre visual from docs/design/visual-style.md ("Mono"): four concentric rings
 // in a 280px box. The three outer rings use the --ring tokens; the inner ring, the centre dot and
-// the radial glow behind them use the room's colour, through --room-colour (styles.css).
+// the radial glow behind them use the room's colour, through --room-colour (pages/RoomPage.css).
 export function RoomRings({ colour }: { colour: string }) {
   // Gradient ids are document-wide, so each instance gets its own.
   const glow = `room-glow-${useId()}`;

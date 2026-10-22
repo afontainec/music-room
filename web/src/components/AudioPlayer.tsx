@@ -18,7 +18,8 @@ interface Props {
 }
 
 // Tries to autoplay; browsers that block it (Safari and iOS especially) leave the track paused
-// behind a single "Tap to listen" button, which hides once the track plays. play() runs directly
+// behind a single "Tap to listen" button, which hides once the track plays. The layer's name shows
+// under the "Your layer" label (styles in pages/RoomPage.css). play() runs directly
 // in the click handler so the gesture counts; a native button also takes Enter and Space.
 // Following tracks reuse the same audio element, which the browser lets play once one has, and
 // which keeps playing with the screen locked or the tab hidden where the browser allows.
@@ -129,16 +130,17 @@ export function AudioPlayer({ src, title, trackId, turn, album, onEnded }: Props
         // errors (e.g. no sound device) here while the track keeps playing.
         onError={(e) => e.currentTarget.readyState === HTMLMediaElement.HAVE_NOTHING && setStatus('error')}
       />
-      <p className="now-playing">
-        {status === 'playing' ? 'Now playing' : 'Up next'}: <strong>{title}</strong>
-      </p>
+      <div className="room-layer">
+        <span className="label">Your layer</span>
+        <p className="layer-name">{title}</p>
+      </div>
       {status === 'paused' && (
         <button type="button" className="play-button" onClick={play}>
           Tap to listen
         </button>
       )}
       {status === 'error' && (
-        <p className="status" role="alert">
+        <p className="body-text" role="alert">
           This track could not be played.
         </p>
       )}

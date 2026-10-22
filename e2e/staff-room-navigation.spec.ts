@@ -3,7 +3,8 @@ import { asStaff, signToken, STAFF } from './admin';
 import { audio, createRoomWithTracks, enterRoom, expectPlaying } from './room';
 
 const TOKEN_KEY = 'music-room.staffToken';
-const backLink = (page: Page) => page.getByRole('link', { name: '← All rooms' });
+// "← Rooms": the arrow is a decorative icon, so the link is named "Rooms".
+const backLink = (page: Page) => page.getByRole('link', { name: 'Rooms', exact: true });
 
 // A marker on window survives client-side navigation and re-renders but not a reload.
 const markPage = (page: Page) => page.evaluate(() => ((window as unknown as { marker: boolean }).marker = true));
@@ -41,7 +42,7 @@ test('Button is not in the DOM for non-authenticated visitors', async ({ page, r
   await expect(page.locator('audio')).toHaveCount(1);
   await expect(backLink(page)).toHaveCount(0);
   await expect(page.getByRole('link')).toHaveCount(0);
-  expect(await page.content()).not.toContain('All rooms');
+  await expect(page.locator('.room-back')).toHaveCount(0);
   // Without a token there is nothing to check, so visitors make no session requests.
   expect(sessionChecks).toEqual([]);
 

@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { getRoom, NotFoundError, type RoomDetails } from '../api/rooms';
 import { AudioPlayer } from '../components/AudioPlayer';
 import { RoomRings } from '../components/RoomRings';
 import { useOptionalStaffSession } from '../hooks/useOptionalStaffSession';
 import { useSoundscapeLayer } from '../hooks/useSoundscapeLayer';
 import { Link } from '../router';
+import './RoomPage.css';
 
 type RoomState =
   | { status: 'loading' }
@@ -12,12 +13,23 @@ type RoomState =
   | { status: 'error' }
   | { status: 'ready'; room: RoomDetails };
 
+// The layer's place on the page, under the "Your layer" label, before the player has a name to show.
+function LayerStatus({ children }: { children: ReactNode }) {
+  return (
+    <div className="room-layer">
+      <span className="label">Your layer</span>
+      <p className="body-text">{children}</p>
+    </div>
+  );
+}
+
 // Entering a room gives this device one layer of the soundscape, chosen by the server so the
 // devices in the room play different tracks. When it ends the device gets its next layer, for as
 // long as the visitor stays; the visitor sees the layer's name but does not choose it. The page
 // links to no other room for visitors: they stay in the room their link opened. Staff with a valid
 // session get a link back to the room list; leaving unmounts the player, which stops the audio.
-// The rings in the centre take the room's colour.
+// The look is the "Mono" direction of docs/design/visual-style.md: the room's name as a label, the
+// rings in the room's colour, and the layer's name in large light type.
 export function RoomPage({ id }: { id: string }) {
   const [room, setRoom] = useState<RoomState>({ status: 'loading' });
   const { state: layer, next } = useSoundscapeLayer(id);
@@ -38,29 +50,47 @@ export function RoomPage({ id }: { id: string }) {
   const notFound = room.status === 'not-found' || layer.status === 'not-found';
 
   return (
-    <main className="page">
-      {staff && (
-        <Link to="/" className="back-link">
-          ← All rooms
-        </Link>
-      )}
+    <main className="room">
+      <div className="room-top">
+        {staff && (
+          <Link to="/" className="room-back">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M19 12H5M11 6l-6 6 6 6" />
+            </svg>
+            Rooms
+          </Link>
+        )}
+        {room.status === 'ready' && !notFound && <h1 className="label room-name">{room.room.name}</h1>}
+      </div>
       {notFound ? (
-        <h1>Room not found</h1>
+        <div className="room-message">
+          <h1 className="title">Room not found</h1>
+        </div>
       ) : room.status === 'error' ? (
-        <p className="status" role="alert">
-          Could not load this room. Please try again later.
-        </p>
+        <div className="room-message">
+          <p className="body-text" role="alert">
+            Could not load this room. Please try again later.
+          </p>
+        </div>
       ) : room.status === 'loading' ? (
-        <p className="status">Loading room…</p>
+        <div className="room-message">
+          <p className="body-text">Loading room…</p>
+        </div>
       ) : (
         <>
-          <h1>{room.room.name}</h1>
-          <p className="status">
-            {room.room.files.length === 1 ? '1 track' : `${room.room.files.length} tracks`}
-          </p>
           <RoomRings colour={room.room.colour} />
           {layer.status === 'loading' ? (
-            <p className="status">Finding your layer…</p>
+            <LayerStatus>Finding your layer…</LayerStatus>
           ) : layer.status === 'ready' && layer.layer ? (
             <AudioPlayer
               src={layer.layer.url}
@@ -71,7 +101,7 @@ export function RoomPage({ id }: { id: string }) {
               onEnded={next}
             />
           ) : (
-            <p className="status">This room has no tracks yet.</p>
+            <LayerStatus>This room has no tracks yet.</LayerStatus>
           )}
         </>
       )}
