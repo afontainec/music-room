@@ -14,7 +14,7 @@ async function decodeQr(page: Page) {
   return jsQR(Uint8ClampedArray.from(data), width, height)?.data ?? null;
 }
 
-test('When logged in as staff, the admin room page shows a link that opens that room’s QR code page', async ({
+test('When logged in as staff, the admin room page shows a prominent share link that opens that room’s QR code page', async ({
   page,
   request,
 }) => {
@@ -22,8 +22,9 @@ test('When logged in as staff, the admin room page shows a link that opens that 
   await asStaff(page);
   await page.goto(`/admin/rooms/${room.id}`);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(room.name);
-  const link = page.getByRole('link', { name: 'QR code', exact: true });
+  const link = page.getByRole('link', { name: 'Share this room', exact: true });
   await expect(link).toHaveAttribute('href', `/admin/rooms/${room.id}/qrcode`);
+  await expect(link).toHaveAccessibleDescription('QR code and link for visitors');
 
   await link.click();
   await expect(page).toHaveURL(`/admin/rooms/${room.id}/qrcode`);
@@ -78,4 +79,22 @@ test('Non-authenticated users cannot access the QR code page and are redirected 
   await expect(page).toHaveURL('/admin/login');
   await expect(qrCode(page)).toHaveCount(0);
   await expect(page.getByText(room.name)).toHaveCount(0);
+});
+
+test('The share link is the first control under the room name and is visible without scrolling on a phone', async ({
+  page,
+  request,
+}) => {
+  const room = await createRoomWithTracks(request, 1);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await asStaff(page);
+  await page.goto(`/admin/rooms/${room.id}`);
+  const link = page.getByRole('link', { name: 'Share this room', exact: true });
+  await expect(link).toBeInViewport({ ratio: 1 });
+
+  const share = await link.boundingBox();
+  const rename = await page.getByRole('button', { name: 'Rename' }).boundingBox();
+  expect(share!.y).toBeLessThan(rename!.y);
+  expect(share!.height).toBeGreaterThanOrEqual(64);
+  expect(share!.width).toBeGreaterThan(300);
 });

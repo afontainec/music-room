@@ -25,8 +25,8 @@ test('Staff open a room’s QR code page to share its link', async ({ page }) =>
   await click(page, page.getByRole('link', { name: new RegExp(`^${forest}`) }));
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(forest);
 
-  await caption(page, 'A "QR code" link sits under the room name');
-  await click(page, page.getByRole('link', { name: 'QR code', exact: true }));
+  await caption(page, 'A "Share this room" card sits right under the room name');
+  await click(page, page.getByRole('link', { name: 'Share this room', exact: true }));
 
   const url = new URL(`/rooms/${id}`, page.url()).href;
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(forest);
