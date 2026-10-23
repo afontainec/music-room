@@ -212,6 +212,72 @@
   overflow-wrap: anywhere;
 }
 
+.staff-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* The analytics report (/admin/analytics): a table of rooms on one card, scrolling sideways on
+   narrow screens rather than squeezing the room names. */
+.staff-table-card {
+  overflow-x: auto;
+  padding: 6px;
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.staff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.staff-table th,
+.staff-table td {
+  padding: 12px 14px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.staff-table th:first-child {
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.staff-table thead th {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.staff-table tbody th {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.staff-table tbody th .staff-room-dot {
+  display: inline-block;
+  margin-right: 12px;
+  vertical-align: -1px;
+}
+
+.staff-table tbody tr,
+.staff-table tfoot tr {
+  border-top: 1px solid var(--border);
+}
+
+.staff-table tfoot th,
+.staff-table tfoot td {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 .staff-room-colour {
   flex-shrink: 0;
   font-family: var(--font-mono);
