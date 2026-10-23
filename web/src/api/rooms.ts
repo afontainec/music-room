@@ -1,5 +1,3 @@
-import { authHeaders } from './auth';
-
 export interface Room {
   id: string;
   name: string;
@@ -9,8 +7,8 @@ export interface Room {
   createdAt: string;
 }
 
-/** A room in the room list, with the number of tracks (layers) it holds. */
-export interface RoomSummary extends Room {
+/** A room in the public room list: only its public fields and the number of tracks (layers) it holds. */
+export interface RoomSummary extends Pick<Room, 'id' | 'name' | 'colour'> {
   trackCount: number;
 }
 
@@ -47,16 +45,8 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-/** The room list is staff only: visitors without a staff token get a 401. */
-export class StaffOnlyError extends Error {}
-
-/** Every room, ordered by name. Sends the staff token when there is one. */
-export async function listRooms(): Promise<RoomSummary[]> {
-  const res = await fetch('/api/rooms', { headers: authHeaders() });
-  if (res.status === 401) throw new StaffOnlyError('GET /api/rooms');
-  if (!res.ok) throw new Error(`GET /api/rooms failed with ${res.status}`);
-  return res.json() as Promise<RoomSummary[]>;
-}
+/** Every room, ordered by name. The list is public, so no staff token is needed. */
+export const listRooms = () => getJson<RoomSummary[]>('/api/rooms');
 
 export const getRoom = (id: string) => getJson<RoomDetails>(`/api/rooms/${encodeURIComponent(id)}`);
 

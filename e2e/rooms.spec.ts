@@ -67,14 +67,38 @@ test('The count updates right after a track is uploaded or removed', async ({ re
   expect(await count()).toBe(0);
 });
 
-test('Anonymous request to the room-list endpoint returns 401/403 with no room data', async ({ request }) => {
-  const name = unique();
-  await request.post('/api/rooms', { headers: await adminHeaders(request), data: { name } });
-  for (const headers of [{}, { authorization: 'Bearer forged.token' }]) {
-    const res = await request.get('/api/rooms', { headers });
-    expect(res.status()).toBe(401);
-    expect(await res.json()).toEqual({ error: 'Authentication required' });
+test('An unauthenticated GET of the room list returns 200 with all rooms', async ({ request }) => {
+  const headers = await adminHeaders(request);
+  const names = [unique(), unique()];
+  for (const name of names) await request.post('/api/rooms', { headers, data: { name } });
+  for (const anonymous of [{}, { authorization: 'Bearer forged.token' }]) {
+    const res = await request.get('/api/rooms', { headers: anonymous });
+    expect(res.status()).toBe(200);
+    expect(((await res.json()) as { name: string }[]).map((r) => r.name)).toEqual(expect.arrayContaining(names));
   }
+});
+
+test('The response contains only public fields (no admin-only data)', async ({ request }) => {
+  const room = await (
+    await request.post('/api/rooms', { headers: await adminHeaders(request), data: { name: unique() } })
+  ).json();
+  const listed = ((await (await request.get('/api/rooms')).json()) as Record<string, unknown>[]).find(
+    (r) => r.id === room.id,
+  )!;
+  expect(Object.keys(listed).sort()).toEqual(['colour', 'id', 'name', 'trackCount']);
+});
+
+test('Create, rename and delete endpoints still return 401 for unauthenticated requests', async ({ request }) => {
+  const room = await (
+    await request.post('/api/rooms', { headers: await adminHeaders(request), data: { name: unique() } })
+  ).json();
+  for (const headers of [{}, { authorization: 'Bearer forged.token' }]) {
+    expect((await request.post('/api/rooms', { headers, data: { name: unique() } })).status()).toBe(401);
+    expect((await request.patch(`/api/rooms/${room.id}`, { headers, data: { name: unique() } })).status()).toBe(401);
+    expect((await request.delete(`/api/rooms/${room.id}`, { headers })).status()).toBe(401);
+  }
+  // Nothing was renamed or deleted.
+  expect(await (await request.get(`/api/rooms/${room.id}`)).json()).toMatchObject({ name: room.name });
 });
 
 test('GET of a single room by id remains public and unaffected', async ({ request }) => {

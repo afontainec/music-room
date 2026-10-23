@@ -30,8 +30,8 @@ export async function createRoomWithTracks(request: APIRequestContext, count: nu
   return { ...room, tracks };
 }
 
-// Opening a room from the selection page is a click, which lets browsers autoplay. The room list
-// is staff only, so the page gets a staff session first.
+// Opening a room from the selection page is a click, which lets browsers autoplay. The page gets a
+// staff session first, so the room page shows the staff "Rooms" link back to the list.
 export async function enterRoom(page: Page, name: string) {
   await asStaff(page);
   await page.goto('/');
