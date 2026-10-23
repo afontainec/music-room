@@ -1,5 +1,6 @@
 import { AdminRoomPage } from './pages/AdminRoomPage';
 import { AdminRoomQrPage } from './pages/AdminRoomQrPage';
+import { Analytics } from './pages/Analytics';
 import { RoomPage } from './pages/RoomPage';
 import { RoomSelection } from './pages/RoomSelection';
 import { StaffArea } from './pages/StaffArea';
@@ -16,6 +17,7 @@ export function App() {
   const adminRoomQr = /^\/admin\/rooms\/([^/]+)\/qrcode\/?$/.exec(pathname);
   if (adminRoomQr) return <AdminRoomQrPage key={adminRoomQr[1]} id={decodeURIComponent(adminRoomQr[1])} />;
   if (/^\/admin\/login\/?$/.test(pathname)) return <StaffLogin />;
+  if (/^\/admin\/analytics\/?$/.test(pathname)) return <Analytics />;
   if (/^\/admin\/?$/.test(pathname)) return <StaffArea />;
 
   return <RoomSelection />;

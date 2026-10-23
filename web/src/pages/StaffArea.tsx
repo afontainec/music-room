@@ -76,9 +76,12 @@ export function StaffArea() {
       <div className="staff-brand">
         <span className="label">Music Rooms</span>
         {session.status === 'ready' && (
-          <button type="button" className="staff-button staff-button-secondary" onClick={logOut}>
-            Log out
-          </button>
+          <div className="staff-nav">
+            <Link to="/admin/analytics">Analytics</Link>
+            <button type="button" className="staff-button staff-button-secondary" onClick={logOut}>
+              Log out
+            </button>
+          </div>
         )}
       </div>
       <div className="staff-intro">
