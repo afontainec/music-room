@@ -76,6 +76,27 @@ export async function addTrackByUrl(roomId: string, url: string): Promise<void> 
   await sendJson('POST', `${roomPath(roomId)}/files/url`, { url });
 }
 
+/** A room's usage in a date range, as `GET /api/analytics/rooms` reports it. */
+export interface RoomUsage {
+  id: string;
+  name: string;
+  colour: string;
+  visits: number;
+  visitors: number;
+  plays: number;
+}
+
+/** Visits and plays per room, every room included. `from` and `to` are UTC dates (YYYY-MM-DD),
+ * both days included; an omitted bound leaves that end of the range open. */
+export async function roomUsage(range: { from?: string; to?: string }): Promise<RoomUsage[]> {
+  const params = new URLSearchParams();
+  if (range.from) params.set('from', range.from);
+  if (range.to) params.set('to', range.to);
+  const url = `/api/analytics/rooms?${params}`;
+  const res = await check(await fetch(url, { headers: authHeaders() }), 'GET /api/analytics/rooms');
+  return ((await res.json()) as { rooms: RoomUsage[] }).rooms;
+}
+
 export async function removeTrack(id: string): Promise<void> {
   const url = `/api/files/${encodeURIComponent(id)}`;
   await check(await fetch(url, { method: 'DELETE', headers: authHeaders() }), `DELETE ${url}`);
