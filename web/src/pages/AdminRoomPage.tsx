@@ -25,7 +25,7 @@ const ADD_MODES: [AddMode, string][] = [
   ['url', 'Add by URL'],
 ];
 
-// A room in the staff area: rename, colour and delete controls, its tracks, a form to upload an mp3 or add
+// A room in the staff area: a link to its QR code page, rename, colour and delete controls, its tracks, a form to upload an mp3 or add
 // one by URL, and a remove button per track. The list is fetched again after every addition or
 // removal, so it always shows what visitors get.
 export function AdminRoomPage({ id }: { id: string }) {
@@ -219,6 +219,9 @@ export function AdminRoomPage({ id }: { id: string }) {
       ) : room.status === 'ready' ? (
         <>
           <h1>{room.room.name}</h1>
+          <Link to={`/admin/rooms/${encodeURIComponent(id)}/qrcode`} className="back-link">
+            QR code
+          </Link>
           <form className="inline-form" onSubmit={onRename}>
             <label>
               Room name

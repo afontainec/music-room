@@ -281,3 +281,35 @@ h2 {
   opacity: 0.6;
   cursor: default;
 }
+
+/* A room's QR code page (/admin/rooms/:id/qrcode). */
+.room-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.room-qr h1 {
+  margin: 0;
+}
+
+.room-qr-code {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.room-qr-url {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  overflow-wrap: anywhere; /* long URLs wrap on narrow phones */
+}
+
+.room-qr-url a {
+  color: var(--text);
+  user-select: all;
+}
