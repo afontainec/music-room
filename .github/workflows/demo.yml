@@ -53,7 +53,15 @@ jobs:
         run: npm ci && npx playwright install --with-deps chromium
       - name: Install ffmpeg
         if: steps.changed.outputs.files != ''
-        run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends ffmpeg
+        # A static build from GitHub releases: apt-get update alone has taken over 10 minutes on
+        # slow mirrors and pushed the job past its timeout. The GPL build includes libx264.
+        run: |
+          curl -fsSL --retry 3 -o /tmp/ffmpeg.tar.xz \
+            https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz
+          mkdir -p "$RUNNER_TEMP/ffmpeg"
+          tar -xJf /tmp/ffmpeg.tar.xz -C "$RUNNER_TEMP/ffmpeg" --strip-components=2 --wildcards '*/bin/ffmpeg'
+          echo "$RUNNER_TEMP/ffmpeg" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/ffmpeg/ffmpeg" -hide_banner -version | head -1
       - name: Record the demos
         if: steps.changed.outputs.files != ''
         run: npm run demo -- ${{ steps.changed.outputs.files }}
