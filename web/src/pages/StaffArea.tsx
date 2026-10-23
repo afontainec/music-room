@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { createRoom, listAllRooms, SessionExpiredError } from '../api/admin';
 import { clearToken } from '../api/auth';
-import type { Room } from '../api/rooms';
+import type { RoomSummary } from '../api/rooms';
 import { ColourPicker } from '../components/ColourPicker';
 import { useStaffSession } from '../hooks/useStaffSession';
 import { colourName, defaultColour } from '../palette';
 import { Link, navigate } from '../router';
 import './Staff.css';
 
-type RoomsState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; rooms: Room[] };
+type RoomsState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; rooms: RoomSummary[] };
 
 // The staff area: every room, linking to its staff page, and a form to create one. The list is
 // fetched again after a room is created, so it always shows what visitors get. The form's colour

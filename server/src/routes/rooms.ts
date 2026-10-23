@@ -1,4 +1,4 @@
-import { asc, count, eq, getTableColumns, sql } from 'drizzle-orm';
+import { asc, count, eq, sql } from 'drizzle-orm';
 import type { FastifyInstance, preHandlerHookHandler } from 'fastify';
 import type { Db } from '../db/client.js';
 import { type Room, roomFiles, rooms } from '../db/schema.js';
@@ -13,7 +13,7 @@ export interface RoomRoutesOptions {
   storage: Storage;
   /** Deleting a room forgets the devices listening in it. */
   presence: Presence;
-  /** Guards the admin routes and the room list (staff only); a single room's routes stay public. */
+  /** Guards the admin routes (staff only); the room list and a single room's routes stay public. */
   requireAdmin: preHandlerHookHandler;
 }
 
@@ -29,7 +29,7 @@ function parseName(value: unknown): { name: string } | { error: string } {
 }
 
 /** The room as the API returns it: `colour` is always a palette colour, derived from the id when none is stored. */
-const withColour = <R extends Room>(room: R) => ({ ...room, colour: roomColour(room) });
+const withColour = <R extends Pick<Room, 'id' | 'colour'>>(room: R) => ({ ...room, colour: roomColour(room) });
 
 const duplicateName = (name: string) => ({ error: `A room named "${name}" already exists` });
 
@@ -130,12 +130,12 @@ export async function roomRoutes(app: FastifyInstance, opts: RoomRoutesOptions) 
     return reply.code(204).send();
   });
 
-  // The full list is for staff; visitors open a room by its id (a link they were given).
+  // Public, so anyone can pick a room; it carries only the fields a visitor needs, no timestamps.
   // `trackCount` is counted on every request, so it follows uploads and removals at once.
-  app.get('/api/rooms', { preHandler: requireAdmin }, async () =>
+  app.get('/api/rooms', async () =>
     (
       await db
-        .select({ ...getTableColumns(rooms), trackCount: count(roomFiles.id) })
+        .select({ id: rooms.id, name: rooms.name, colour: rooms.colour, trackCount: count(roomFiles.id) })
         .from(rooms)
         .leftJoin(roomFiles, eq(roomFiles.roomId, rooms.id))
         .groupBy(rooms.id)
