@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import {
   addTrackByUrl,
   deleteRoom,
@@ -25,7 +25,27 @@ const ADD_MODES: [AddMode, string][] = [
   ['url', 'Add by URL'],
 ];
 
-// A room in the staff area: rename, colour and delete controls, its tracks, a form to upload an mp3 or add
+// The familiar "share" glyph (a box with an arrow leaving it), drawn in the current colour.
+function ShareIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="22"
+      height="22"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 3v12" />
+      <path d="M8 7l4-4 4 4" />
+      <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
+    </svg>
+  );
+}
+
+// A room in the staff area: a prominent "Share this room" link to its QR code page, rename, colour and delete controls, its tracks, a form to upload an mp3 or add
 // one by URL, and a remove button per track. The list is fetched again after every addition or
 // removal, so it always shows what visitors get.
 export function AdminRoomPage({ id }: { id: string }) {
@@ -219,6 +239,26 @@ export function AdminRoomPage({ id }: { id: string }) {
       ) : room.status === 'ready' ? (
         <>
           <h1>{room.room.name}</h1>
+          <Link
+            to={`/admin/rooms/${encodeURIComponent(id)}/qrcode`}
+            className="share-room"
+            style={{ '--room-colour': room.room.colour } as CSSProperties}
+            aria-label="Share this room"
+            aria-describedby="share-room-hint"
+          >
+            <span className="share-room-icon" aria-hidden="true">
+              <ShareIcon />
+            </span>
+            <span className="share-room-text">
+              <span className="share-room-title">Share this room</span>
+              <span id="share-room-hint" className="share-room-hint">
+                QR code and link for visitors
+              </span>
+            </span>
+            <span className="share-room-arrow" aria-hidden="true">
+              →
+            </span>
+          </Link>
           <form className="inline-form" onSubmit={onRename}>
             <label>
               Room name
