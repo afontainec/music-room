@@ -281,3 +281,96 @@ h2 {
   opacity: 0.6;
   cursor: default;
 }
+
+/* A room's QR code page (/admin/rooms/:id/qrcode). */
+.room-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.room-qr h1 {
+  margin: 0;
+}
+
+.room-qr-code {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.room-qr-url {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  overflow-wrap: anywhere; /* long URLs wrap on narrow phones */
+}
+
+.room-qr-url a {
+  color: var(--text);
+  user-select: all;
+}
+
+/* A room's staff page: the "Share this room" link to its QR code page, the most useful action
+   there, so a full-width card right under the name, with a share icon in the room's colour. */
+.share-room {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 72px;
+  margin-bottom: 1.5rem;
+  padding: 14px 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.share-room:hover {
+  border-color: var(--room-colour);
+  background: var(--surface-raised);
+}
+
+.share-room-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--room-colour);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--room-colour) 45%, transparent);
+  color: var(--bg);
+}
+
+.share-room-text {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+}
+
+.share-room-title {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.share-room-hint {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.share-room-arrow {
+  color: var(--text-muted);
+  font-size: 20px;
+}
+
+@media (min-width: 640px) {
+  .share-room {
+    max-width: 480px;
+  }
+}
