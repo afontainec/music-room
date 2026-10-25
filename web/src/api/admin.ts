@@ -1,5 +1,5 @@
 import { authHeaders, clearToken } from './auth';
-import { NotFoundError, type Room, type RoomFile } from './rooms';
+import { NotFoundError, type Room, type RoomFile, type RoomSummary } from './rooms';
 
 /** A room's track as the staff list shows it: its display name and a playable URL. */
 export interface Track extends RoomFile {
@@ -30,9 +30,11 @@ async function sendJson(method: 'POST' | 'PATCH', url: string, body: unknown): P
   return check(await fetch(url, { method, headers, body: JSON.stringify(body) }), `${method} ${url}`);
 }
 
-/** Every room, ordered by name. The list is staff only. */
-export async function listAllRooms(): Promise<Room[]> {
-  return (await check(await fetch('/api/rooms', { headers: authHeaders() }), 'GET /api/rooms')).json() as Promise<Room[]>;
+/** Every room, ordered by name. The list itself is public; the staff area loads it like its other calls. */
+export async function listAllRooms(): Promise<RoomSummary[]> {
+  return (await check(await fetch('/api/rooms', { headers: authHeaders() }), 'GET /api/rooms')).json() as Promise<
+    RoomSummary[]
+  >;
 }
 
 /** Creates a room, in `colour` when given (else the server picks its default). Rejects with the

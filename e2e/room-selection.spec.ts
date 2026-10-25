@@ -11,29 +11,18 @@ async function createRoom(request: APIRequestContext, name = unique()) {
 
 const roomLink = (page: Page, name: string) => page.getByRole('link', { name, exact: true });
 
-// The room list is staff only (see the anonymous visitor test), so the other tests start logged in.
-
-test('Non-staff visitor opening the room list URL sees a friendly message and no room names', async ({
-  page,
-  request,
-}) => {
+test('A visitor without a login sees every room on the selection page', async ({ page, request }) => {
   const room = await createRoom(request);
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ask for a room link');
-  await expect(page.getByText('Ask the staff here for the link to your room', { exact: false })).toBeVisible();
-  await expect(page.getByRole('list', { name: 'Rooms' })).toHaveCount(0);
-  await expect(page.getByText(room.name)).toHaveCount(0);
-  expect(await page.content()).not.toContain(room.name);
-  // The only link is the staff login, none to a room.
-  await expect(page.getByRole('link')).toHaveText(['Log in']);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Where are you?');
+  await expect(roomLink(page, room.name)).toBeVisible();
 });
 
-test('A visitor with an expired staff session also sees the friendly message', async ({ page, request }) => {
+test('A visitor with an expired staff session also sees the rooms', async ({ page, request }) => {
   const room = await createRoom(request);
-  await page.addInitScript(() => localStorage.setItem('music-room.staffToken','not-a-valid-token'));
+  await page.addInitScript(() => localStorage.setItem('music-room.staffToken', 'not-a-valid-token'));
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ask for a room link');
-  await expect(page.getByText(room.name)).toHaveCount(0);
+  await expect(roomLink(page, room.name)).toBeVisible();
 });
 
 test('Public visitors see no navigation to other rooms while in a room', async ({ page, request }) => {

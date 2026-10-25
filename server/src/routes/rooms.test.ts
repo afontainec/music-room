@@ -106,14 +106,35 @@ describe('room routes', () => {
     expect(await counts()).toEqual({ Empty: 0, One: 1, Many: 3 });
   });
 
-  it('answers an anonymous room list request with 401 and no room data', async () => {
-    await create('Forest');
+  it('lists all rooms to anonymous visitors with only their public fields', async () => {
+    const forest = (await create('Forest')).json();
+    const sea = (await create('Sea')).json();
+    await app.inject({
+      method: 'POST',
+      url: `/api/rooms/${sea.id}/files/url`,
+      headers: admin,
+      payload: { url: 'https://example.com/waves.mp3' },
+    });
+    // A rejected token is ignored, not refused: the list needs none.
     for (const headers of [{}, { authorization: 'Bearer nope' }]) {
       const res = await app.inject({ method: 'GET', url: '/api/rooms', headers });
-      expect(res.statusCode).toBe(401);
-      expect(res.headers['www-authenticate']).toBe('Bearer');
-      expect(res.json()).toEqual({ error: 'Authentication required' });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual([
+        { id: forest.id, name: 'Forest', colour: forest.colour, trackCount: 0 },
+        { id: sea.id, name: 'Sea', colour: sea.colour, trackCount: 1 },
+      ]);
     }
+  });
+
+  it('keeps creating, renaming and deleting rooms for staff', async () => {
+    const room = (await create('Forest')).json();
+    for (const headers of [{}, { authorization: 'Bearer nope' }]) {
+      expect((await create('Sea', headers)).statusCode).toBe(401);
+      const rename = await app.inject({ method: 'PATCH', url: `/api/rooms/${room.id}`, headers, payload: { name: 'Sea' } });
+      expect(rename.statusCode).toBe(401);
+      expect((await app.inject({ method: 'DELETE', url: `/api/rooms/${room.id}`, headers })).statusCode).toBe(401);
+    }
+    expect((await app.inject({ method: 'GET', url: '/api/rooms' })).json()).toMatchObject([{ name: 'Forest' }]);
   });
 
   it('keeps a single room public', async () => {

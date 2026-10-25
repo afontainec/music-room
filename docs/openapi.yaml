@@ -68,12 +68,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/rooms:
     get:
-      summary: List all rooms (staff only)
+      summary: List all rooms
       description: >-
-        The full room list is for staff. Visitors open a room by its id (`GET /api/rooms/{id}`),
-        which stays public.
-      security:
-        - staffToken: []
+        Public: no staff token is needed, so visitors can pick their room. Each room carries only
+        its public fields (no timestamps).
       responses:
         '200':
           description: Rooms ordered by name, each with its track count
@@ -82,19 +80,23 @@ paths:
               schema:
                 type: array
                 items:
-                  allOf:
-                    - $ref: '#/components/schemas/Room'
-                    - type: object
-                      required: [trackCount]
-                      properties:
-                        trackCount:
-                          type: integer
-                          minimum: 0
-                          description: >-
-                            How many tracks (layers) the room has, uploads and URLs alike. Counted
-                            on each request, so it reflects an upload or removal at once.
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                  type: object
+                  additionalProperties: false
+                  required: [id, name, colour, trackCount]
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+                    colour:
+                      $ref: '#/components/schemas/RoomColour'
+                    trackCount:
+                      type: integer
+                      minimum: 0
+                      description: >-
+                        How many tracks (layers) the room has, uploads and URLs alike. Counted on
+                        each request, so it reflects an upload or removal at once.
     post:
       summary: Create a room
       security:
