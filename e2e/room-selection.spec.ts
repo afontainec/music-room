@@ -1,5 +1,5 @@
 import { devices, expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { adminHeaders, asStaff } from './admin';
+import { adminHeaders } from './admin';
 
 const unique = () => `e2e-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
@@ -51,7 +51,6 @@ test('Opening a room URL directly as a visitor still works and refresh reopens t
 });
 
 test('Page lists all existing rooms by name', async ({ page, request }) => {
-  await asStaff(page);
   const first = await createRoom(request);
   const second = await createRoom(request);
   await page.goto('/');
@@ -61,7 +60,6 @@ test('Page lists all existing rooms by name', async ({ page, request }) => {
 });
 
 test("Clicking a room navigates the user to that room's page", async ({ page, request }) => {
-  await asStaff(page);
   const room = await createRoom(request);
   await request.post(`/api/rooms/${room.id}/files/url`, {
     headers: await adminHeaders(request),
@@ -72,7 +70,7 @@ test("Clicking a room navigates the user to that room's page", async ({ page, re
   await expect(page).toHaveURL(`/rooms/${room.id}`);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(room.name);
   await expect(page.locator('.layer-name')).toHaveText('one');
-  // The room page also loads directly (server falls back to the SPA); staff go back with the browser.
+  // The room page also loads directly (server falls back to the SPA); visitors go back with the browser.
   await page.reload();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(room.name);
   await page.goBack();
@@ -81,7 +79,6 @@ test("Clicking a room navigates the user to that room's page", async ({ page, re
 });
 
 test('Page updates if rooms are added/removed (on reload)', async ({ page, request }) => {
-  await asStaff(page);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Where are you?');
   const room = await createRoom(request);
@@ -110,7 +107,6 @@ test('Shows an error when rooms cannot be loaded', async ({ page }) => {
 
 test.describe('Works on both desktop and mobile browsers', () => {
   test('desktop: rooms are laid out in a grid', async ({ page, request }) => {
-    await asStaff(page);
     await page.setViewportSize({ width: 1280, height: 800 });
     await createRoom(request);
     await createRoom(request);
@@ -125,7 +121,6 @@ test.describe('Works on both desktop and mobile browsers', () => {
     test.use(pixel5);
 
     test('mobile: rooms sit two to a row and open on tap', async ({ page, request }) => {
-      await asStaff(page);
       const room = await createRoom(request);
       await page.goto('/');
       const link = roomLink(page, room.name);
