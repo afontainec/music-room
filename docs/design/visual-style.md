@@ -75,7 +75,7 @@ Room colours are decoration (the dot, the rings); never put text in a room colou
 - Centre: four concentric rings (radii 138, 110, 82, 54 in a 280px box, scaling down on small screens). The three outer rings use `--ring-1`…`--ring-3`; the inner ring (1.5px), a 5px centre dot and a soft radial glow behind them use the room's colour.
 - Below: the "YOUR LAYER" label and the layer name in large light type.
 - The "Tap to listen" button keeps its behaviour and becomes the primary button: full width, 52px tall, pill-shaped, `--text` background with `--bg` text, Geist 16px weight 500.
-- Bottom: a round mute button and a volume slider, as in the mockup. These belong to the volume controls feature; a restyle without that feature leaves the space empty rather than building the controls.
+- Bottom: a round mute button and a volume slider, as in the mockup (built in `web/src/components/VolumeControls.tsx`; the slider's thumb dims while muted).
 - On wider screens the page is a centred column, max-width 480px.
 - Motion: the existing audio fade-in is the only required motion. A slow pulse of the inner ring is allowed if it respects `prefers-reduced-motion`.
 

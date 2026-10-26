@@ -17,6 +17,9 @@ interface Props {
   onEnded?: () => void;
   /** Called once per track started, when it first plays (not on resuming after a pause). */
   onStarted?: () => void;
+  /** The visitor's level, 0 to 1: the fade-in rises to it, and changing it applies at once. */
+  volume?: number;
+  muted?: boolean;
 }
 
 // Tries to autoplay; browsers that block it (Safari and iOS especially) leave the track paused
@@ -25,13 +28,18 @@ interface Props {
 // in the click handler so the gesture counts; a native button also takes Enter and Space.
 // Following tracks reuse the same audio element, which the browser lets play once one has, and
 // which keeps playing with the screen locked or the tab hidden where the browser allows.
-export function AudioPlayer({ src, title, trackId, turn, album, onEnded, onStarted }: Props) {
+export function AudioPlayer({ src, title, trackId, turn, album, onEnded, onStarted, volume = 1, muted = false }: Props) {
   const audio = useRef<HTMLAudioElement>(null);
   const [status, setStatus] = useState<Status>('starting');
   // False only after the visitor paused from the lock screen or media keys, so returning to
   // the page resumes an interrupted track but not one the visitor stopped.
   const wantsPlay = useRef(true);
   const fade = useRef<{ turn: number; timer?: number }>({ turn: -1 });
+  // How far the current layer's fade-in has come (0 to 1); the element's volume is this times
+  // the visitor's level, so moving the slider mid-fade neither skips nor restarts the fade.
+  const progress = useRef(0);
+  const level = useRef(volume);
+  level.current = volume;
 
   // A rejected play() (autoplay blocked, NotAllowedError) leaves the track paused behind the
   // "Tap to listen" button. An AbortError only means a new src or a pause() interrupted this
@@ -48,6 +56,7 @@ export function AudioPlayer({ src, title, trackId, turn, album, onEnded, onStart
   useEffect(() => {
     // Silent until it starts playing, then the fade brings it in.
     clearInterval(fade.current.timer);
+    progress.current = 0;
     if (audio.current) audio.current.volume = 0;
     play();
   }, [src, turn]);
@@ -60,13 +69,24 @@ export function AudioPlayer({ src, title, trackId, turn, album, onEnded, onStart
     clearInterval(fade.current.timer);
     const start = performance.now();
     const step = () => {
-      el.volume = Math.min(1, (performance.now() - start) / FADE_IN_MS);
-      if (el.volume >= 1) clearInterval(fade.current.timer);
+      progress.current = Math.min(1, (performance.now() - start) / FADE_IN_MS);
+      el.volume = progress.current * level.current;
+      if (progress.current >= 1) clearInterval(fade.current.timer);
     };
     fade.current = { turn, timer: window.setInterval(step, FADE_STEP_MS) };
     step();
     onStarted?.();
   };
+
+  useEffect(() => {
+    if (audio.current) audio.current.volume = progress.current * volume;
+  }, [volume]);
+
+  // Muting leaves the layer playing, so unmuting picks it up where it is now. React does not
+  // keep the `muted` attribute in sync, so the property is set here.
+  useEffect(() => {
+    if (audio.current) audio.current.muted = muted;
+  }, [muted]);
 
   // Leaving the room stops playback, even where a detached element would keep playing.
   useEffect(() => {

@@ -107,9 +107,80 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
-  /* The space the mute button and volume slider will take (40px gap, 44px row); they belong to
-     the volume controls feature, so it stays empty until then. */
-  margin-bottom: 84px;
+}
+
+/* The mute button and volume slider under the layer (components/VolumeControls.tsx). */
+.volume-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 40px;
+}
+
+.icon-button {
+  width: var(--touch);
+  height: var(--touch);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  border-color: var(--text-muted);
+}
+
+/* A 2px track with a 20px thumb, inside an input of full touch height so it is easy to grab. */
+.volume {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: var(--touch);
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.volume::-webkit-slider-runnable-track {
+  height: 2px;
+  background: var(--border-strong);
+}
+
+.volume::-moz-range-track {
+  height: 2px;
+  background: var(--border-strong);
+}
+
+.volume::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -9px;
+  border-radius: 50%;
+  background: var(--text);
+}
+
+.volume::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text);
+}
+
+/* Muted, the slider keeps the level to return to, with a dimmed thumb. */
+.volume[data-muted]::-webkit-slider-thumb {
+  background: var(--text-muted);
+}
+
+.volume[data-muted]::-moz-range-thumb {
+  background: var(--text-muted);
 }
 
 .room-layer {
