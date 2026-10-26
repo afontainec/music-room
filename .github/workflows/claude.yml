@@ -73,3 +73,11 @@ jobs:
           claude_args: |
             --model claude-opus-5-5
             --allowedTools "Bash(npm install *),Bash(npm ci),Bash(npm run *),Bash(npm test *),Bash(npx playwright *),Bash(gh pr create *)"
+
+      # The action logs only how many tool calls were refused; this puts which ones, and Claude's
+      # final message, in the job summary, so a run that stops early shows why.
+      - name: Report the run
+        if: always() && steps.claude.outputs.execution_file != ''
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: .github/scripts/claude-run-report.sh "$EXECUTION_FILE" >> "$GITHUB_STEP_SUMMARY" || echo "Could not read $EXECUTION_FILE"
