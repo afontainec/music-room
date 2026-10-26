@@ -3,11 +3,17 @@ import { useId, type CSSProperties } from 'react';
 // The room page's centre visual from docs/design/visual-style.md ("Mono"): four concentric rings
 // in a 280px box. The three outer rings use the --ring tokens; the inner ring, the centre dot and
 // the radial glow behind them use the room's colour, through --room-colour (pages/RoomPage.css).
-export function RoomRings({ colour }: { colour: string }) {
+// `level` is the playing layer's measured loudness (0 to 1), set as --audio-level for styles to
+// react to and as data-audio-level; nothing uses it visually yet.
+export function RoomRings({ colour, level = 0 }: { colour: string; level?: number }) {
   // Gradient ids are document-wide, so each instance gets its own.
   const glow = `room-glow-${useId()}`;
   return (
-    <div className="room-visual" style={{ '--room-colour': colour } as CSSProperties}>
+    <div
+      className="room-visual"
+      style={{ '--room-colour': colour, '--audio-level': level } as CSSProperties}
+      data-audio-level={level}
+    >
       <svg viewBox="0 0 280 280" fill="none" aria-hidden="true">
         <defs>
           <radialGradient id={glow} className="room-glow">
