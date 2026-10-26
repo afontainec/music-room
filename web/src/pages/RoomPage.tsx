@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { getRoom, NotFoundError, type RoomDetails } from '../api/rooms';
 import { AudioPlayer } from '../components/AudioPlayer';
 import { RoomRings } from '../components/RoomRings';
+import { useVolumeSettings, VolumeControls } from '../components/VolumeControls';
 import { useOptionalStaffSession } from '../hooks/useOptionalStaffSession';
 import { useSoundscapeLayer } from '../hooks/useSoundscapeLayer';
 import { Link } from '../router';
@@ -29,11 +30,13 @@ function LayerStatus({ children }: { children: ReactNode }) {
 // links to no other room for visitors: they stay in the room their link opened. Staff with a valid
 // session get a link back to the room list; leaving unmounts the player, which stops the audio.
 // The look is the "Mono" direction of docs/design/visual-style.md: the room's name as a label, the
-// rings in the room's colour, and the layer's name in large light type.
+// rings in the room's colour, the layer's name in large light type, and at the bottom the
+// visitor's mute button and volume slider, which change only this device's sound.
 export function RoomPage({ id }: { id: string }) {
   const [room, setRoom] = useState<RoomState>({ status: 'loading' });
   const { state: layer, next, played } = useSoundscapeLayer(id);
   const staff = useOptionalStaffSession();
+  const [sound, setSound] = useVolumeSettings();
 
   // The room is read once on entry; a staff edit (name, colour, tracks) shows after a reload.
   useEffect(() => {
@@ -92,15 +95,20 @@ export function RoomPage({ id }: { id: string }) {
           {layer.status === 'loading' ? (
             <LayerStatus>Finding your layer…</LayerStatus>
           ) : layer.status === 'ready' && layer.layer ? (
-            <AudioPlayer
-              src={layer.layer.url}
-              title={layer.layer.name}
-              trackId={layer.layer.id}
-              turn={layer.turn}
-              album={room.room.name}
-              onEnded={next}
-              onStarted={() => played(layer.layer!.id)}
-            />
+            <>
+              <AudioPlayer
+                src={layer.layer.url}
+                title={layer.layer.name}
+                trackId={layer.layer.id}
+                turn={layer.turn}
+                album={room.room.name}
+                onEnded={next}
+                onStarted={() => played(layer.layer!.id)}
+                volume={sound.volume}
+                muted={sound.muted}
+              />
+              <VolumeControls settings={sound} onChange={setSound} />
+            </>
           ) : (
             <LayerStatus>This room has no tracks yet.</LayerStatus>
           )}
