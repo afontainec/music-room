@@ -37,6 +37,8 @@ export function RoomPage({ id }: { id: string }) {
   const { state: layer, next, played } = useSoundscapeLayer(id);
   const staff = useOptionalStaffSession();
   const [sound, setSound] = useVolumeSettings();
+  // How loud this device's layer is right now (0 to 1), for the rings to react to.
+  const [audioLevel, setAudioLevel] = useState(0);
 
   // The room is read once on entry; a staff edit (name, colour, tracks) shows after a reload.
   useEffect(() => {
@@ -91,7 +93,7 @@ export function RoomPage({ id }: { id: string }) {
         </div>
       ) : (
         <>
-          <RoomRings colour={room.room.colour} />
+          <RoomRings colour={room.room.colour} level={layer.status === 'ready' && layer.layer ? audioLevel : 0} />
           {layer.status === 'loading' ? (
             <LayerStatus>Finding your layer…</LayerStatus>
           ) : layer.status === 'ready' && layer.layer ? (
@@ -106,6 +108,7 @@ export function RoomPage({ id }: { id: string }) {
                 onStarted={() => played(layer.layer!.id)}
                 volume={sound.volume}
                 muted={sound.muted}
+                onLevel={setAudioLevel}
               />
               <VolumeControls settings={sound} onChange={setSound} />
             </>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useAudioLevel } from '../hooks/useAudioLevel';
 
 type Status = 'starting' | 'playing' | 'paused' | 'error';
 
@@ -20,6 +21,8 @@ interface Props {
   /** The visitor's level, 0 to 1: the fade-in rises to it, and changing it applies at once. */
   volume?: number;
   muted?: boolean;
+  /** The layer's measured loudness, 0 to 1, whenever it changes (see hooks/useAudioLevel.ts). */
+  onLevel?: (level: number) => void;
 }
 
 // Tries to autoplay; browsers that block it (Safari and iOS especially) leave the track paused
@@ -28,7 +31,7 @@ interface Props {
 // in the click handler so the gesture counts; a native button also takes Enter and Space.
 // Following tracks reuse the same audio element, which the browser lets play once one has, and
 // which keeps playing with the screen locked or the tab hidden where the browser allows.
-export function AudioPlayer({ src, title, trackId, turn, album, onEnded, onStarted, volume = 1, muted = false }: Props) {
+export function AudioPlayer({ src, title, trackId, turn, album, onEnded, onStarted, volume = 1, muted = false, onLevel }: Props) {
   const audio = useRef<HTMLAudioElement>(null);
   const [status, setStatus] = useState<Status>('starting');
   // False only after the visitor paused from the lock screen or media keys, so returning to
@@ -40,6 +43,8 @@ export function AudioPlayer({ src, title, trackId, turn, album, onEnded, onStart
   const progress = useRef(0);
   const level = useRef(volume);
   level.current = volume;
+  // The meter follows the fade-in, which is part of the layer's sound, but not the visitor's level.
+  useAudioLevel(audio, src, () => progress.current, onLevel);
 
   // A rejected play() (autoplay blocked, NotAllowedError) leaves the track paused behind the
   // "Tap to listen" button. An AbortError only means a new src or a pause() interrupted this
